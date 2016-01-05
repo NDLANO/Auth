@@ -35,7 +35,7 @@ object StateService {
       * Check that the given string is a valid state that exists in the database.
       * If the state is valid, true is returned. If the state does not exist, false is returned.
       * If the state is in an invalid format, an exception is returned.
-      * @param uuid
+      * @param uuid the uuid
       * @return
       */
     def isStateValid(uuid: String): Boolean = {

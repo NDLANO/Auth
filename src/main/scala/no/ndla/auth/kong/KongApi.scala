@@ -1,6 +1,6 @@
 package no.ndla.auth.kong
 
-import com.typesafe.scalalogging.{StrictLogging, LazyLogging}
+import com.typesafe.scalalogging.StrictLogging
 import org.json4s.DefaultFormats
 import org.json4s.native.JsonMethods._
 
@@ -17,7 +17,7 @@ object KongApi extends StrictLogging {
     implicit val formats = DefaultFormats // Brings in default date formats etc.
 
     def getOrCreateKeyAndConsumer(username: String): KongKey = {
-        val usernameWithPrefix = USERNAME_PREFIX + username;
+        val usernameWithPrefix = USERNAME_PREFIX + username
 
         createConsumerIfNotExists(usernameWithPrefix)
         val keys: List[KongKey] = getKeys(usernameWithPrefix)
@@ -29,7 +29,7 @@ object KongApi extends StrictLogging {
     }
 
     private def createConsumerIfNotExists(username: String): Unit = {
-        val getConsumer: HttpResponse[String] = Http(s"http://${KONG_HOSTNAME}:${KONG_ADMIN_PORT}/consumers/$username").asString
+        val getConsumer: HttpResponse[String] = Http(s"http://$KONG_HOSTNAME:$KONG_ADMIN_PORT/consumers/$username").asString
         if (getConsumer.is2xx) return
         if (getConsumer.isCodeInRange(404, 404)) {
             createConsumer(username)
@@ -39,8 +39,8 @@ object KongApi extends StrictLogging {
     }
 
     private def createConsumer(id: String): Unit = {
-        val response: HttpResponse[String] = Http(s"http://${KONG_HOSTNAME}:${KONG_ADMIN_PORT}/consumers/").postForm(Seq(
-            "username" -> (id)
+        val response: HttpResponse[String] = Http(s"http://$KONG_HOSTNAME:$KONG_ADMIN_PORT/consumers/").postForm(Seq(
+            "username" -> id
             )).asString
 
         if (response.isError) {
@@ -49,7 +49,7 @@ object KongApi extends StrictLogging {
     }
 
    private def createKey(id: String): KongKey = {
-        val response: HttpResponse[String] = Http(s"http://${KONG_HOSTNAME}:${KONG_ADMIN_PORT}/consumers/$id/key-auth").method("POST").asString
+        val response: HttpResponse[String] = Http(s"http://$KONG_HOSTNAME:$KONG_ADMIN_PORT/consumers/$id/key-auth").method("POST").asString
 
         if (response.isError) {
             throw new RuntimeException("Unable to create key: " + response.body)
@@ -58,7 +58,7 @@ object KongApi extends StrictLogging {
     }
 
     private def getKeys(username: String): List[KongKey]= {
-        val response: HttpResponse[String] = Http(s"http://${KONG_HOSTNAME}:${KONG_ADMIN_PORT}/consumers/$username/key-auth/").asString
+        val response: HttpResponse[String] = Http(s"http://$KONG_HOSTNAME:$KONG_ADMIN_PORT/consumers/$username/key-auth/").asString
         parse(response.body).extract[KongKeys].data
     }
 }

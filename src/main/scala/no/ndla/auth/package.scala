@@ -5,10 +5,10 @@ package object auth {
     /**
       * Returns a string with the elements in the map with the format key1=value1&key2=value2...
       *
-      * @param parametersWithCorrectHost
+      * @param parameters the parameters
       * @return
       */
-    def toQueryStringFormat(parametersWithCorrectHost: Map[String, String]): String = {
-        parametersWithCorrectHost.map(e => e._1 + "=" + e._2).mkString("&")
+    def toQueryStringFormat(parameters: Map[String, String]): String = {
+        parameters.map(e => e._1 + "=" + e._2).mkString("&")
     }
 }

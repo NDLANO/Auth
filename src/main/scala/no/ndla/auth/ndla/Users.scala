@@ -7,10 +7,10 @@ import com.datastax.driver.core.utils.UUIDs
 import com.datastax.driver.core._
 import no.ndla.auth.providers.google.GoogleUser
 import no.ndla.auth.providers.twitter.TwitterUser
-import no.ndla.auth.{ExternalUser}
+import no.ndla.auth.ExternalUser
 import no.ndla.auth.providers.facebook.FacebookUser
 import org.joda.time.DateTime
-import no.ndla.auth.database.Cassandra.{session}
+import no.ndla.auth.database.Cassandra.session
 
 object Users {
 
@@ -23,15 +23,15 @@ object Users {
         }
 
         if (ndlaUserId.isDefined) {
-            return getNdlaUser(ndlaUserId.get)
+            getNdlaUser(ndlaUserId.get)
         } else {
             val ndlaUserId: String = createNdlaUser(user)
-            return getNdlaUser(ndlaUserId).copy(newUser = true)
+            getNdlaUser(ndlaUserId).copy(newUser = true)
         }
     }
 
     private def createNdlaUser(externalUser: ExternalUser): String = {
-        val ndla_user_id: String = UUID.randomUUID().toString()
+        val ndla_user_id: String = UUID.randomUUID().toString
 
         val insertNdlaUser: PreparedStatement = session.prepare(s"INSERT INTO ndla_users(id, first_name, middle_name, last_name, email, ${externalUser.userType}_id, created) VALUES (?, ?, ?, ?, ?, ?, ?)")
         val updateExternalUserWithNdlaUserId: Statement = QueryBuilder.update(externalUser.userType + "_users").`with`(QueryBuilder.set("ndla_id", ndla_user_id)).where(QueryBuilder.eq("id",externalUser.id))
@@ -45,7 +45,7 @@ object Users {
     private def getNdlaUser(ndlaUserId: String): NdlaUser = {
         val resultSet: ResultSet = session.execute(s"select * from ndla_users where id = '$ndlaUserId';")
         val row: Row = resultSet.one()
-        return NdlaUser(ndlaUserId, Option(row.getString("first_name")), Option(row.getString("middle_name")), Option(row.getString("last_name")), Option(row.getString("email")), new DateTime(UUIDs.unixTimestamp(row.getUUID("created"))));
+        NdlaUser(ndlaUserId, Option(row.getString("first_name")), Option(row.getString("middle_name")), Option(row.getString("last_name")), Option(row.getString("email")), new DateTime(UUIDs.unixTimestamp(row.getUUID("created"))))
     }
 
     private def findOrCreateUser(facebookUser: FacebookUser): Option[String] = {
@@ -56,9 +56,9 @@ object Users {
 
         if (result.wasApplied()) {
             // New user
-            return None
+            None
         } else {
-            return Option(result.one().getString("ndla_id"))
+            Option(result.one().getString("ndla_id"))
         }
     }
 
@@ -70,9 +70,9 @@ object Users {
 
         if (result.wasApplied()) {
             // New user
-            return None
+            None
         } else {
-            return Option(result.one().getString("ndla_id"))
+            Option(result.one().getString("ndla_id"))
         }
     }
 
@@ -86,17 +86,18 @@ object Users {
             googleUser.displayName.orNull,
             googleUser.etag.orNull,
             googleUser.objectType.orNull,
-            Option(true).map(_.asInstanceOf[java.lang.Boolean]).getOrElse(null),
+            Option(true).map(_.asInstanceOf[java.lang.Boolean]).orNull,
             googleUser.email.orNull,
             UUIDs.timeBased())
         val result = session.execute(boundStatement)
 
         if (result.wasApplied()) {
             // New user
-            return None
+            None
         } else {
-            return Option(result.one().getString("ndla_id"))
-        }    }
+            Option(result.one().getString("ndla_id"))
+        }
+    }
 }
 
 case class NdlaUser(id: String,

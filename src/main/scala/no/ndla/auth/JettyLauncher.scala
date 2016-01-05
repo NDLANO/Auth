@@ -8,8 +8,6 @@ import org.scalatra.servlet.ScalatraListener
 object JettyLauncher  {
     // this is my entry object as specified in sbt project definition
     def main(args: Array[String]) {
-        val startMillis = System.currentTimeMillis();
-
         AuthProperties.verify()
 
         val port = 80
@@ -22,11 +20,9 @@ object JettyLauncher  {
 
         val server = new Server(port)
         server.setHandler(servletContext)
-        server.start
+        server.start()
 
-        val startTime = System.currentTimeMillis() - startMillis
-
-        server.join
+        server.join()
     }
 }
 

@@ -1,7 +1,10 @@
 package no.ndla.auth
 
-import no.ndla.auth.providers.facebook.{FacebookAccessToken, FacebookAuthService}
-import no.ndla.auth.providers.google.{GoogleAccessToken, GoogleAuthService}
+import com.typesafe.scalalogging.StrictLogging
+import no.ndla.auth.AuditLogger.logAudit
+import no.ndla.auth.Error.AUTHENTICATION
+import no.ndla.auth.providers.facebook.FacebookAuthService
+import no.ndla.auth.providers.google.GoogleAuthService
 import no.ndla.auth.kong.{KongKey, KongApi}
 import no.ndla.auth.ndla.NdlaUser
 import no.ndla.auth.providers.twitter.TwitterAuthService
@@ -12,7 +15,8 @@ import org.scalatra.swagger._
 
 import scala.util.{Success, Failure, Try}
 
-class AuthController (implicit val swagger: Swagger) extends ScalatraServlet with NativeJsonSupport with SwaggerSupport {
+class AuthController (implicit val swagger: Swagger) extends ScalatraServlet with NativeJsonSupport with SwaggerSupport with StrictLogging{
+
     // Sets up automatic case class to JSON output serialization, required by
     // the JValueResult trait.
     protected implicit val jsonFormats: Formats = DefaultFormats.preservingEmptyValues ++ org.json4s.ext.JodaTimeSerializers.all
@@ -22,7 +26,7 @@ class AuthController (implicit val swagger: Swagger) extends ScalatraServlet wit
     val loginGoogle =
         (apiOperation[Void]("loginWithGoogle")
             summary "Redirects the user to Google login."
-            notes "Calling this method will return a HTTP 302 redirect header to the Google login page with application spesific parameters like state and application id." +
+            notes "Calling this method will return a HTTP 302 redirect header to the Google login page with application specific parameters like state and application id." +
             "When the login process is completed by the user, Google will redirect the user back to NDLA to verify the login."
             )
 
@@ -40,9 +44,9 @@ class AuthController (implicit val swagger: Swagger) extends ScalatraServlet wit
 
     val loginFacebook =
         (apiOperation[Void]("loginWithFacebook")
-            summary "Redirects the user to Google login."
-            notes "Calling this method will return a HTTP 302 redirect header to the Google login page with application spesific parameters like state and application id." +
-            "When the login process is completed by the user, Google will redirect the user back to NDLA to verify the login."
+            summary "Redirects the user to Facebook login."
+            notes "Calling this method will return a HTTP 302 redirect header to the Facebook login page with application specific parameters like state and application id." +
+            "When the login process is completed by the user, Facebook will redirect the user back to NDLA to verify the login."
             )
 
     val verifyFacebook =
@@ -57,24 +61,55 @@ class AuthController (implicit val swagger: Swagger) extends ScalatraServlet wit
             )
             )
 
+    val loginTwitter =
+        (apiOperation[Void]("loginWithTwitter")
+            summary "Redirects the user to Twitter login."
+            notes "Calling this method will return a HTTP 302 redirect header to the Twitter login page with application specific parameters. " +
+            "When the login process is completed by the user, Twitter will redirect the user back to NDLA to verify the login."
+            )
+
+    val verifyTwitter =
+        (apiOperation[NdlaUser]("verifyFacebookLogin")
+            summary "OAuth callback URL."
+            notes "When the login process is completed with Twitter, the user is redirected here for verification of the login. For new NDLA-users an NDLA account will be created." +
+            "Info about the logged in user is returned in the body. The secret api-key is returned as a header with name 'api-key'."
+            parameters(
+            queryParam[Option[String]]("oauth_token").description("The OAuth 1a token to be verified and exchanged with a access token. Can not be combined with the denied parameter."),
+            queryParam[Option[String]]("oauth_verifier").description("The Oauth 1a verifier parameter. Can not be combined with the denied parameter."),
+            queryParam[Option[String]]("denied").description("The login with Twitter failed. Can not be combined with the oauth_token and oauth_verifier parameters.")
+            )
+            )
+
     // Before every action runs, set the content type to be in JSON format.
     before() {
         contentType = formats("json")
     }
 
+    error{
+        case t:Throwable =>
+            logAndRenderError(500, Error.GenericError, t)
+
+    }
+
+    private def logAndRenderError (statusCode: Int, error: Error, exception: Throwable): Unit = {
+        logger.error(error.toString, exception)
+        halt(status = statusCode, body = error)
+    }
+
     get("/google/login", operation(loginGoogle)) {
-        redirect(GoogleAuthService.getRedirectUri())
+        redirect(GoogleAuthService.getRedirectUri)
     }
 
     get("/google/verify", operation(verifyGoogle)) {
         if (params.isDefinedAt("error")) {
-            val errorMessage = "Authentication failure: " + params("error")
+            val errorMessage = s"Authentication failure from Google: ${params("error")}"
+            logAudit(errorMessage)
             halt(403, errorMessage)
         }
 
         checkRequiredParameters(params, GoogleAuthService.requiredParameters:_*) match {
             case Success(_) =>
-            case Failure(ex) =>  halt(400, ex.getMessage)
+            case Failure(ex) =>  halt(400, Error(AUTHENTICATION, s"Missing parameter ${ex.getMessage}"))
         }
 
         val user: NdlaUser = GoogleAuthService.getOrCreateNdlaUser(params("code"), params("state"))
@@ -84,7 +119,7 @@ class AuthController (implicit val swagger: Swagger) extends ScalatraServlet wit
     }
 
     get("/facebook/login", operation(loginFacebook)) {
-        redirect(FacebookAuthService.getRedirect())
+        redirect(FacebookAuthService.getRedirect)
     }
 
     get("/facebook/verify", operation(verifyFacebook)) {
@@ -94,18 +129,20 @@ class AuthController (implicit val swagger: Swagger) extends ScalatraServlet wit
             val error_description = params.get("error_description")
             val error_reason = params.get("error_reason")
 
-            val errorMessage = s"""Authentication failure \n
+            val errorMessage = s"""Authentication failure from Facebook \n
                                    |Error: '${error.getOrElse("")}'
                                    |Error code: '${error_code.getOrElse("")}'
                                    |Error description: '${error_description.getOrElse("")}'
                                    |Error reason: '${error_reason.getOrElse("")}'
                                 """.stripMargin
+
+            logAudit(errorMessage)
             halt(403, errorMessage)
         }
 
         checkRequiredParameters(params, "code", "state") match {
             case Success(_) =>
-            case Failure(ex) =>  halt(400, ex.getMessage)
+            case Failure(ex) =>  halt(400, Error(AUTHENTICATION, s"Missing parameter ${ex.getMessage}"))
         }
 
         val user: NdlaUser = FacebookAuthService.getOrCreateNdlaUser(params("code"), params("state"))
@@ -114,33 +151,30 @@ class AuthController (implicit val swagger: Swagger) extends ScalatraServlet wit
         Ok(body = user, Map("apikey" -> kongKey.key))
     }
 
-    get("/twitter/login") {
+    get("/twitter/login", operation(loginTwitter)) {
         redirect(TwitterAuthService.getRedirectUri)
     }
 
-    get("/twitter/verify") {
+    get("/twitter/verify", operation(verifyTwitter)) {
         if (params.contains("denied")) {
-            val errorMessage = "Authentication failure. User denied."
+            val errorMessage = "Authentication failure from Twitter. User denied."
+            logAudit(errorMessage)
             halt(403, errorMessage)
         }
 
         checkRequiredParameters(params, "oauth_token", "oauth_verifier") match {
             case Success(_) =>
-            case Failure(ex) =>  halt(400, ex.getMessage)
+            case Failure(ex) =>  halt(400, Error(AUTHENTICATION, s"Missing parameter ${ex.getMessage}"))
         }
 
-        val oauth_token = params("oauth_token")
-        val oauth_verifier = params("oauth_verifier")
-
-        val user: NdlaUser = TwitterAuthService.getOrCreateNdlaUser(oauth_token, oauth_verifier)
+        val user: NdlaUser = TwitterAuthService.getOrCreateNdlaUser(params("oauth_token"), params("oauth_verifier"))
         val kongKey: KongKey = KongApi.getOrCreateKeyAndConsumer(user.id)
 
         Ok(body = user, Map("apikey" -> kongKey.key))
-
     }
 
-    def checkRequiredParameters(actualParameteres: Params, requiredParameters: String*): Try[Unit] = {
-        Try (requiredParameters.foreach(parameter => require(actualParameteres.get(parameter).map(_.trim.nonEmpty).isDefined,
+    def checkRequiredParameters(actualParameters: Params, requiredParameters: String*): Try[Unit] = {
+        Try (requiredParameters.foreach(parameter => require(actualParameters.get(parameter).map(_.trim.nonEmpty).isDefined,
             s"Required parameter '$parameter' is missing or empty.")))
     }
- }
+}

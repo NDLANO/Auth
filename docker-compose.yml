@@ -14,7 +14,7 @@
 #  restart: always
 #
 auth: 
-  image: ndla/auth:v0.1_34eb06e
+  image: ndla/auth:v0.1_df848d8
   ports: 
     - "30006:80"
   external_links: 

@@ -1,7 +1,7 @@
 import no.ndla.auth._
 import org.scalatra._
 import javax.servlet.ServletContext
-import no.ndla.auth.{ResourcesApp}
+import no.ndla.auth.ResourcesApp
 
 class ScalatraBootstrap extends LifeCycle {
     override def init(context: ServletContext) {

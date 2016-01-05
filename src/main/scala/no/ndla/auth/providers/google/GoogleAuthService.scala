@@ -10,7 +10,6 @@ import no.ndla.auth._
 import no.ndla.auth.exception._
 
 object GoogleAuthService extends StrictLogging {
-
     implicit val formats = DefaultFormats // Brings in default date formats etc for Json
 
     // Required parameters for this provider.
@@ -35,11 +34,11 @@ object GoogleAuthService extends StrictLogging {
     val CLIENT_SECRET = EnvironmentVariable("client_secret", "The client secret shared with the oauth provider. Must be kept secret and not be used in client code.")
     val USER_INFO_URL = EnvironmentVariable("user_info_url", "The url used to get info about the authorized user.")
 
-    def getRedirectUri(): String = {
+    def getRedirectUri: String = {
         val requiredParameters = List(CLIENT_ID, RESPONSE_TYPE, SCOPE, REDIRECT_URI).map(_.key)
         val state = StateService.createState().toString
         val parameters = configuration.filterKeys(requiredParameters.contains(_)) + (STATE -> state)
-        return configuration(LOGIN_URL.key) + "?" + toQueryStringFormat(parameters)
+        configuration(LOGIN_URL.key) + "?" + toQueryStringFormat(parameters)
     }
 
     def getOrCreateNdlaUser(code: String, state: String): NdlaUser = {

@@ -31,17 +31,16 @@ object FacebookAuthService {
     val CLIENT_SECRET = EnvironmentVariable("client_secret", "The client secret shared with the oauth provider. Must be kept secret and not be used in client code.")
     val USER_INFO_URL = EnvironmentVariable("user_info_url", "The url used to get info about the authorized user.")
 
-    def getRedirect(): String = {
+    def getRedirect: String = {
         val requiredParameters = List(CLIENT_ID, RESPONSE_TYPE, SCOPE, REDIRECT_URI).map(_.key)
         val state = StateService.createState().toString
         val parameters = configuration.filterKeys(requiredParameters.contains(_)) + (STATE -> state)
-        return configuration(LOGIN_URL.key) + "?" + toQueryStringFormat(parameters)
+        configuration(LOGIN_URL.key) + "?" + toQueryStringFormat(parameters)
     }
 
     def getOrCreateNdlaUser(code: String, state: String): NdlaUser = {
         getUser(getAccessToken(code, state))
     }
-
 
     private def getAccessToken(code: String, state: String): FacebookAccessToken = {
         StateService.isStateValid(state) match {
@@ -50,7 +49,7 @@ object FacebookAuthService {
         }
 
         val requiredParameters = List(CLIENT_ID, CLIENT_SECRET, REDIRECT_URI).map(_.key)
-        val parameters = (configuration.filterKeys(requiredParameters.contains(_)) + (CODE -> code))
+        val parameters = configuration.filterKeys(requiredParameters.contains(_)) + (CODE -> code)
         val url = configuration(ACCESS_TOKEN_VERIFICATION_URL.key) + "?" + toQueryStringFormat(parameters)
 
         val response: HttpResponse[String] = scalaj.http.Http(url).asString
@@ -63,7 +62,7 @@ object FacebookAuthService {
 
     /**
       * Return the NDLA-user. If the user id does not exist it will be created.
-      * @param accessToken
+      * @param accessToken the facebook access token
       * @return
       */
     private def getUser(accessToken: FacebookAccessToken): NdlaUser = {

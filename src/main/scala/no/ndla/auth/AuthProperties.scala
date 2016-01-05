@@ -11,7 +11,7 @@ object AuthProperties extends LazyLogging {
 
     def verify() = {
         val missingProperties = properties.filter(entry => entry._2.isEmpty).toList
-        if(missingProperties.length > 0){
+        if(missingProperties.nonEmpty){
             missingProperties.foreach(entry => logger.error("Missing required environment variable {}", entry._1))
 
             logger.error("Shutting down.")
