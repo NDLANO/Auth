@@ -38,7 +38,12 @@ object FacebookAuthService {
         return configuration(LOGIN_URL.key) + "?" + toQueryStringFormat(parameters)
     }
 
-    def getAccessToken(code: String, state: String): FacebookAccessToken = {
+    def getOrCreateNdlaUser(code: String, state: String): NdlaUser = {
+        getUser(getAccessToken(code, state))
+    }
+
+
+    private def getAccessToken(code: String, state: String): FacebookAccessToken = {
         StateService.isStateValid(state) match {
             case false => throw new RuntimeException("Illegal State")
             case true => // Ok
@@ -61,7 +66,7 @@ object FacebookAuthService {
       * @param accessToken
       * @return
       */
-    def getUser(accessToken: FacebookAccessToken): NdlaUser = {
+    private def getUser(accessToken: FacebookAccessToken): NdlaUser = {
         val url: String = configuration.get(USER_INFO_URL.key).get
         val response = scalaj.http.Http(url + "?fields=id,name,first_name,last_name,middle_name,email,verified&access_token=" + accessToken.access_token).asString
 

@@ -36,11 +36,12 @@ lazy val auth = (project in file(".")).
             "javax.servlet" % "javax.servlet-api" % "3.1.0" % "provided",
             "org.scalaj" %% "scalaj-http" % "2.0.0",
             "org.json4s" %% "json4s-native" % Json4sVersion,
-            "org.json4s" %% "json4s-ext" % Json4sVersion, 
+            "org.json4s" %% "json4s-ext" % Json4sVersion,
             "org.scalatra" %% "scalatra-json" % Scalatraversion,
             "org.scalatra" %% "scalatra-swagger"  % Scalatraversion,
             "com.datastax.cassandra" % "cassandra-driver-core" % "2.1.8",
-            "org.eclipse.jetty" % "jetty-webapp" % "9.2.10.v20150310" % "container;compile"
+            "org.eclipse.jetty" % "jetty-webapp" % "9.2.10.v20150310" % "container;compile",
+            "com.github.scribejava" % "scribejava-apis" % "2.1.0"
         )
     ).enablePlugins(DockerPlugin).enablePlugins(GitVersioning).enablePlugins(JettyPlugin)
 

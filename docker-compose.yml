@@ -14,7 +14,7 @@
 #  restart: always
 #
 auth: 
-  image: ndla/auth:v0.1_fe07d2e
+  image: ndla/auth:v0.1_34eb06e
   ports: 
     - "30006:80"
   external_links: 
@@ -39,3 +39,7 @@ auth:
     FACEBOOK_client_secret: "ed27dd1a4e5dedc9be4f38d26fd4dde5"
     FACEBOOK_access_token_verification_url: "https://graph.facebook.com/v2.3/oauth/access_token"
     FACEBOOK_user_info_url: "https://graph.facebook.com/me"
+    TWITTER_api_key: "qrA9vzmSybJvmsIne4MsktUgp"
+    TWITTER_client_secret: "UA8xTwrtTq4brYFmxr9IrMob3ruh7s6Op06IY3yiI3eaO8wlSO"
+    TWITTER_callback_url: "http://local.ndla.no:20000/auth/twitter/verify"
+    TWITTER_user_info_url: "https://api.twitter.com/1.1/account/verify_credentials.json"

@@ -6,6 +6,7 @@ import com.datastax.driver.core.querybuilder.QueryBuilder
 import com.datastax.driver.core.utils.UUIDs
 import com.datastax.driver.core._
 import no.ndla.auth.providers.google.GoogleUser
+import no.ndla.auth.providers.twitter.TwitterUser
 import no.ndla.auth.{ExternalUser}
 import no.ndla.auth.providers.facebook.FacebookUser
 import org.joda.time.DateTime
@@ -17,6 +18,7 @@ object Users {
         val ndlaUserId: Option[String] = user.userType match {
             case no.ndla.auth.UserType.FACEBOOK => findOrCreateUser(user.asInstanceOf[FacebookUser])
             case no.ndla.auth.UserType.GOOGLE => findOrCreateUser(user.asInstanceOf[GoogleUser])
+            case no.ndla.auth.UserType.TWITTER => findOrCreateUser(user.asInstanceOf[TwitterUser])
             case _ => throw new RuntimeException("Not implemented for given user type")
         }
 
@@ -48,7 +50,7 @@ object Users {
 
     private def findOrCreateUser(facebookUser: FacebookUser): Option[String] = {
         val insertUserIntoFacebookTable: PreparedStatement = session.prepare(s"INSERT INTO facebook_users (id, first_name, middle_name, last_name, created, email) " +
-            s"VALUES ( ?, ?, ?, ?, ?, ?) IF NOT EXISTS  ;")
+            s"VALUES (?, ?, ?, ?, ?, ?) IF NOT EXISTS  ;")
         val boundStatement: BoundStatement = insertUserIntoFacebookTable.bind(facebookUser.id, facebookUser.first_name.orNull, facebookUser.middle_name.orNull, facebookUser.last_name.orNull, UUIDs.timeBased(), facebookUser.email.orNull)
         val result = session.execute(boundStatement)
 
@@ -60,9 +62,23 @@ object Users {
         }
     }
 
+    private def findOrCreateUser(twitterUser: TwitterUser): Option[String] = {
+        val insertUserIntoFacebookTable: PreparedStatement = session.prepare(s"INSERT INTO twitter_users (id, name, first_name, middle_name, last_name, created, email) " +
+            s"VALUES (?, ?, ?, ?, ?, ?, ?) IF NOT EXISTS  ;")
+        val boundStatement: BoundStatement = insertUserIntoFacebookTable.bind(twitterUser.id, twitterUser.name.orNull, twitterUser.first_name.orNull, twitterUser.middle_name.orNull, twitterUser.last_name.orNull, UUIDs.timeBased(), twitterUser.email.orNull)
+        val result = session.execute(boundStatement)
+
+        if (result.wasApplied()) {
+            // New user
+            return None
+        } else {
+            return Option(result.one().getString("ndla_id"))
+        }
+    }
+
     private def findOrCreateUser(googleUser: GoogleUser): Option[String] = {
-        val insertUserIntoFacebookTable: PreparedStatement = session.prepare(s"INSERT INTO google_users (id, first_name, middle_name, last_name, display_name, etag, object_type, verified, email, created) VALUES ( ?, ?, ?, ?, ?, ?,?, ?, ?, ?) IF NOT EXISTS  ;")
-        val boundStatement: BoundStatement = insertUserIntoFacebookTable.bind(
+        val insertUserIntoTable: PreparedStatement = session.prepare(s"INSERT INTO google_users (id, first_name, middle_name, last_name, display_name, etag, object_type, verified, email, created) VALUES ( ?, ?, ?, ?, ?, ?,?, ?, ?, ?) IF NOT EXISTS  ;")
+        val boundStatement: BoundStatement = insertUserIntoTable.bind(
             googleUser.id,
             googleUser.name.flatMap(_.givenName).orNull,
             googleUser.name.flatMap(_.middleName).orNull,

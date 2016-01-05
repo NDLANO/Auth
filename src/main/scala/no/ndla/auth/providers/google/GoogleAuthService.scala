@@ -3,7 +3,6 @@ package no.ndla.auth.providers.google
 import com.typesafe.scalalogging.StrictLogging
 import no.ndla.auth.UserType._
 import no.ndla.auth.ndla.{Users, NdlaUser}
-
 import scalaj.http.HttpResponse
 import org.json4s._
 import org.json4s.native.JsonMethods._
@@ -13,6 +12,9 @@ import no.ndla.auth.exception._
 object GoogleAuthService extends StrictLogging {
 
     implicit val formats = DefaultFormats // Brings in default date formats etc for Json
+
+    // Required parameters for this provider.
+    val requiredParameters = Array("code", "state")
 
     val configuration: Map[String, String] = AuthProperties.getWithPrefix("GOOGLE_").collect {
         case (key, Some(value)) => key -> value
@@ -40,7 +42,11 @@ object GoogleAuthService extends StrictLogging {
         return configuration(LOGIN_URL.key) + "?" + toQueryStringFormat(parameters)
     }
 
-    def getAccessToken(code: String, state: String): GoogleAccessToken = {
+    def getOrCreateNdlaUser(code: String, state: String): NdlaUser = {
+        getUser(getAccessToken(code, state))
+    }
+
+    private def getAccessToken(code: String, state: String): GoogleAccessToken = {
         StateService.isStateValid(state) match {
             case false => throw new RuntimeException("Illegal State")
             case true => // Ok
@@ -57,7 +63,7 @@ object GoogleAuthService extends StrictLogging {
             throw AccessTokenVerificationException(s"An error occurred while verifying the access token. ${response.statusLine}: ${response.body}")
     }
 
-    def getUser(accessToken: GoogleAccessToken): NdlaUser = {
+    private def getUser(accessToken: GoogleAccessToken): NdlaUser = {
         val url: String = configuration.get(USER_INFO_URL.key).get
         val authorization = ("Authorization", s"Bearer ${accessToken.access_token}")
         val response = scalaj.http.Http(url).headers(authorization).asString

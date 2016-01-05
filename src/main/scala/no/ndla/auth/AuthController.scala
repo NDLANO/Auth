@@ -4,10 +4,13 @@ import no.ndla.auth.providers.facebook.{FacebookAccessToken, FacebookAuthService
 import no.ndla.auth.providers.google.{GoogleAccessToken, GoogleAuthService}
 import no.ndla.auth.kong.{KongKey, KongApi}
 import no.ndla.auth.ndla.NdlaUser
-import org.scalatra.{ScalatraServlet, Ok}
+import no.ndla.auth.providers.twitter.TwitterAuthService
+import org.scalatra.{Params, ScalatraServlet, Ok}
 import org.json4s.{DefaultFormats, Formats}
 import org.scalatra.json.NativeJsonSupport
 import org.scalatra.swagger._
+
+import scala.util.{Success, Failure, Try}
 
 class AuthController (implicit val swagger: Swagger) extends ScalatraServlet with NativeJsonSupport with SwaggerSupport {
     // Sets up automatic case class to JSON output serialization, required by
@@ -65,15 +68,16 @@ class AuthController (implicit val swagger: Swagger) extends ScalatraServlet wit
 
     get("/google/verify", operation(verifyGoogle)) {
         if (params.isDefinedAt("error")) {
-            val errorMessage = "Authentiaction failure: " + params("error")
+            val errorMessage = "Authentication failure: " + params("error")
             halt(403, errorMessage)
         }
 
-        val code = params("code")
-        val state = params("state")
+        checkRequiredParameters(params, GoogleAuthService.requiredParameters:_*) match {
+            case Success(_) =>
+            case Failure(ex) =>  halt(400, ex.getMessage)
+        }
 
-        val accessToken: GoogleAccessToken = GoogleAuthService.getAccessToken(code, state)
-        val user: NdlaUser = GoogleAuthService.getUser(accessToken)
+        val user: NdlaUser = GoogleAuthService.getOrCreateNdlaUser(params("code"), params("state"))
         val kongKey: KongKey = KongApi.getOrCreateKeyAndConsumer(user.id)
 
         Ok(body = user, Map("apikey" -> kongKey.key))
@@ -90,7 +94,7 @@ class AuthController (implicit val swagger: Swagger) extends ScalatraServlet wit
             val error_description = params.get("error_description")
             val error_reason = params.get("error_reason")
 
-            val errorMessage = s"""Authentiaction failure \n
+            val errorMessage = s"""Authentication failure \n
                                    |Error: '${error.getOrElse("")}'
                                    |Error code: '${error_code.getOrElse("")}'
                                    |Error description: '${error_description.getOrElse("")}'
@@ -99,14 +103,44 @@ class AuthController (implicit val swagger: Swagger) extends ScalatraServlet wit
             halt(403, errorMessage)
         }
 
-        val code = params("code")
-        val state = params("state")
+        checkRequiredParameters(params, "code", "state") match {
+            case Success(_) =>
+            case Failure(ex) =>  halt(400, ex.getMessage)
+        }
 
-        val accessToken: FacebookAccessToken = FacebookAuthService.getAccessToken(code, state)
-        // TODO: Verify facebook token
-        val user: NdlaUser = FacebookAuthService.getUser(accessToken)
+        val user: NdlaUser = FacebookAuthService.getOrCreateNdlaUser(params("code"), params("state"))
         val kongKey: KongKey = KongApi.getOrCreateKeyAndConsumer(user.id)
 
         Ok(body = user, Map("apikey" -> kongKey.key))
     }
-}
+
+    get("/twitter/login") {
+        redirect(TwitterAuthService.getRedirectUri)
+    }
+
+    get("/twitter/verify") {
+        if (params.contains("denied")) {
+            val errorMessage = "Authentication failure. User denied."
+            halt(403, errorMessage)
+        }
+
+        checkRequiredParameters(params, "oauth_token", "oauth_verifier") match {
+            case Success(_) =>
+            case Failure(ex) =>  halt(400, ex.getMessage)
+        }
+
+        val oauth_token = params("oauth_token")
+        val oauth_verifier = params("oauth_verifier")
+
+        val user: NdlaUser = TwitterAuthService.getOrCreateNdlaUser(oauth_token, oauth_verifier)
+        val kongKey: KongKey = KongApi.getOrCreateKeyAndConsumer(user.id)
+
+        Ok(body = user, Map("apikey" -> kongKey.key))
+
+    }
+
+    def checkRequiredParameters(actualParameteres: Params, requiredParameters: String*): Try[Unit] = {
+        Try (requiredParameters.foreach(parameter => require(actualParameteres.get(parameter).map(_.trim.nonEmpty).isDefined,
+            s"Required parameter '$parameter' is missing or empty.")))
+    }
+ }
