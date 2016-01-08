@@ -1,0 +1,45 @@
+#cassandra:
+#  image: mashape/cassandra:latest
+
+#kong: 
+#  image: mashape/kong:0.5.4
+#  ports: 
+#    - "8000:8000"
+#    - "8001:8001"
+#  external_links:
+#    - cassandra:cassandra
+#  environment:
+#    ADMIN_PORT: "8001"
+#    HOSTNAME: "kong"
+#  restart: always
+#
+auth: 
+  image: ndla/auth:v0.1_df848d8
+  ports: 
+    - "30006:80"
+  external_links: 
+    - kong:kong
+    - cassandra:cassandra
+  container_name: auth
+  environment:
+    GOOGLE_client_id: "710748955543-lv79gtlthqdovmijs6b7lhoq10ccov2p.apps.googleusercontent.com"
+    GOOGLE_response_type: "code"
+    GOOGLE_scope: "openId%20email"
+    GOOGLE_redirect_uri: "http://local.ndla.no:20000/auth/google/verify"
+    GOOGLE_login_url: "https://accounts.google.com/o/oauth2/auth"
+    GOOGLE_client_secret: "_jKhMLWYv0cUGhHjKxQIs1me"
+    GOOGLE_access_token_verification_url: "https://www.googleapis.com/oauth2/v3/token"
+    GOOGLE_grant_type: "authorization_code"
+    GOOGLE_user_info_url: "https://www.googleapis.com/plus/v1/people/me"
+    FACEBOOK_client_id: "1847251908835714"
+    FACEBOOK_response_type: "code"
+    FACEBOOK_scope: "email"
+    FACEBOOK_redirect_uri: "http://local.ndla.no:20000/auth/facebook/verify"
+    FACEBOOK_login_url: "https://www.facebook.com/dialog/oauth"
+    FACEBOOK_client_secret: "ed27dd1a4e5dedc9be4f38d26fd4dde5"
+    FACEBOOK_access_token_verification_url: "https://graph.facebook.com/v2.3/oauth/access_token"
+    FACEBOOK_user_info_url: "https://graph.facebook.com/me"
+    TWITTER_api_key: "qrA9vzmSybJvmsIne4MsktUgp"
+    TWITTER_client_secret: "UA8xTwrtTq4brYFmxr9IrMob3ruh7s6Op06IY3yiI3eaO8wlSO"
+    TWITTER_callback_url: "http://local.ndla.no:20000/auth/twitter/verify"
+    TWITTER_user_info_url: "https://api.twitter.com/1.1/account/verify_credentials.json"
