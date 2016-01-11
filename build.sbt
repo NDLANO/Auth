@@ -66,22 +66,28 @@ dockerfile in docker := {
     new Dockerfile {
         from("java")
 
-        env("NDLACOMPONENT", "auth")
-
-        add(artifact, artifactTargetPath)
-        entryPoint("java", "-jar", artifactTargetPath)
-    }
+    add(artifact, artifactTargetPath)
+    entryPoint("java", "-Dorg.scalatra.environment=production", "-jar", artifactTargetPath)
+  }
 }
 
 val gitHeadCommitSha = settingKey[String]("current git commit SHA")
 gitHeadCommitSha in ThisBuild := Process("git log --pretty=format:%h -n 1").lines.head
 
 imageNames in docker := Seq(
-    ImageName("ndla/auth"),
-    ImageName(namespace = Some(organization.value),
+    ImageName(
+        namespace = Some(organization.value),
         repository = name.value,
-        tag = Some("v" + version.value + "_" + gitHeadCommitSha.value))
+        tag = Some(System.getProperty("docker.tag", "SNAPSHOT")))
 )
+
+publishTo := {
+  val nexus = "https://nexus.knowit.no/"
+  if (isSnapshot.value)
+    Some("snapshots" at nexus + "content/repositories/ndla-snapshots")
+  else
+    Some("releases"  at nexus + "content/repositories/ndla-releases")
+}
 
 resolvers ++= Seq(
     "Snapshot Sonatype Nexus Repository Manager" at "https://nexus.knowit.no/content/repositories/ndla-snapshots",
