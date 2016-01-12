@@ -48,5 +48,7 @@ CREATE TABLE IF NOT EXISTS accounts.ndla_users (
 );
 
 CREATE TABLE IF NOT EXISTS accounts.state (
-  id uuid PRIMARY KEY
+  id uuid PRIMARY KEY,
+  success text,
+  failure text
 );

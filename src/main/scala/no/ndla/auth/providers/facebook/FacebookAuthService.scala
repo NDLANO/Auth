@@ -31,9 +31,9 @@ object FacebookAuthService {
     val CLIENT_SECRET = EnvironmentVariable("client_secret", "The client secret shared with the oauth provider. Must be kept secret and not be used in client code.")
     val USER_INFO_URL = EnvironmentVariable("user_info_url", "The url used to get info about the authorized user.")
 
-    def getRedirect: String = {
+    def getRedirect(successUrl:String, failureUrl:String) : String = {
         val requiredParameters = List(CLIENT_ID, RESPONSE_TYPE, SCOPE, REDIRECT_URI).map(_.key)
-        val state = StateService.createState().toString
+        val state = StateService.createState(successUrl, failureUrl).toString
         val parameters = configuration.filterKeys(requiredParameters.contains(_)) + (STATE -> state)
         configuration(LOGIN_URL.key) + "?" + toQueryStringFormat(parameters)
     }
