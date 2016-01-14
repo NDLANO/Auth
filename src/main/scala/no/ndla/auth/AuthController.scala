@@ -2,11 +2,11 @@ package no.ndla.auth
 
 import com.typesafe.scalalogging.StrictLogging
 import no.ndla.auth.AuditLogger.logAudit
-import no.ndla.auth.Error.AUTHENTICATION
+import no.ndla.auth.Error.{AUTHENTICATION, NOT_FOUND}
 import no.ndla.auth.providers.facebook.FacebookAuthService
 import no.ndla.auth.providers.google.GoogleAuthService
 import no.ndla.auth.kong.{KongKey, KongApi}
-import no.ndla.auth.ndla.NdlaUser
+import no.ndla.auth.ndla.{Users, NdlaUser}
 import no.ndla.auth.providers.twitter.TwitterAuthService
 import org.scalatra.{Params, ScalatraServlet, Ok}
 import org.json4s.{DefaultFormats, Formats}
@@ -22,6 +22,13 @@ class AuthController(implicit val swagger: Swagger) extends ScalatraServlet with
   protected implicit val jsonFormats: Formats = DefaultFormats.preservingEmptyValues ++ org.json4s.ext.JodaTimeSerializers.all
 
   protected val applicationDescription = "API for accessing authentication API from ndla.no."
+
+  val infoAboutMe = (apiOperation[NdlaUser]("infoAboutMe")
+    summary "Information about the logged in user."
+    notes "This will show information about the logged in user."
+    parameters(
+      headerParam[Option[String]]("app-key").description("Your app-key.")
+    ))
 
   val loginGoogle =
     (apiOperation[Void]("loginWithGoogle")
@@ -98,9 +105,8 @@ class AuthController(implicit val swagger: Swagger) extends ScalatraServlet with
   }
 
   error {
-    case t: Throwable =>
-      logAndRenderError(500, Error.GenericError, t)
-
+    case n: NoSuchUserException => logAndRenderError(404, Error(NOT_FOUND, "No user with given id found."), n)
+    case t: Throwable => logAndRenderError(500, Error.GenericError, t)
   }
 
   private def logAndRenderError(statusCode: Int, error: Error, exception: Throwable): Unit = {
@@ -108,13 +114,20 @@ class AuthController(implicit val swagger: Swagger) extends ScalatraServlet with
     halt(status = statusCode, body = error)
   }
 
-  get("/google/login", operation(loginGoogle)) {
+  get("/me", operation(infoAboutMe)) {
+    Option(request.getHeader("X-Consumer-Username")) match {
+      case Some(user) => Users.getNdlaUser(user.replace(AuthProperties.KONG_USERNAME_PREFIX, ""))
+      case None => halt(status = 404, body = Error(NOT_FOUND, s"No username found in request"))
+    }
+  }
+
+  get("/login/google", operation(loginGoogle)) {
     val successUrl = WhiteListedUrls.getSuccessUrl(params.get("successUrl"))
     val failureUrl = WhiteListedUrls.getFailureUrl(params.get("failureUrl"))
     redirect(GoogleAuthService.getRedirectUri(successUrl, failureUrl))
   }
 
-  get("/google/verify", operation(verifyGoogle)) {
+  get("/login/google/verify", operation(verifyGoogle)) {
     val (successUrl, failureUrl) = StateService.getRedirectUrls(params("state"))
 
     if (params.isDefinedAt("error")) {
@@ -135,13 +148,13 @@ class AuthController(implicit val swagger: Swagger) extends ScalatraServlet with
 
   }
 
-  get("/facebook/login", operation(loginFacebook)) {
+  get("/login/facebook", operation(loginFacebook)) {
     val successUrl = WhiteListedUrls.getSuccessUrl(params.get("successUrl"))
     val failureUrl = WhiteListedUrls.getFailureUrl(params.get("failureUrl"))
     redirect(FacebookAuthService.getRedirect(successUrl, failureUrl))
   }
 
-  get("/facebook/verify", operation(verifyFacebook)) {
+  get("/login/facebook/verify", operation(verifyFacebook)) {
     if (params.contains("error")) {
       val error = params.get("error")
       val error_code = params.get("error_code")
@@ -171,11 +184,11 @@ class AuthController(implicit val swagger: Swagger) extends ScalatraServlet with
     Ok(body = user, Map("apikey" -> kongKey.key))
   }
 
-  get("/twitter/login", operation(loginTwitter)) {
+  get("/login/twitter", operation(loginTwitter)) {
     redirect(TwitterAuthService.getRedirectUri)
   }
 
-  get("/twitter/verify", operation(verifyTwitter)) {
+  get("/login/twitter/verify", operation(verifyTwitter)) {
     if (params.contains("denied")) {
       val errorMessage = "Authentication failure from Twitter. User denied."
       logAudit(errorMessage)

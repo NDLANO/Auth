@@ -11,6 +11,8 @@ object AuthProperties extends LazyLogging {
   val whiteListedSuccessUrls = get("WHITELISTED_SUCCESSURLS")
   val whiteListedFailureUrls = get("WHITELISTED_FAILUREURLS")
 
+  val KONG_USERNAME_PREFIX = "ndla-"
+
   def verify() = {
     val missingProperties = properties.filter(entry => entry._2.isEmpty).toList
     if (missingProperties.nonEmpty) {
