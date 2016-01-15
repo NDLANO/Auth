@@ -165,7 +165,7 @@ class AuthController(implicit val swagger: Swagger) extends ScalatraServlet with
     val user: NdlaUser = GoogleAuthService.getOrCreateNdlaUser(params("code"), params("state"))
     val kongKey: KongKey = KongApi.getOrCreateKeyAndConsumer(user.id)
 
-    halt(status = 302, headers = Map("apikey" -> kongKey.key, "Location" -> successUrl.replace("{apikey}", kongKey.key)))
+    halt(status = 302, headers = Map("app-key" -> kongKey.key, "Location" -> successUrl.replace("{appkey}", kongKey.key)))
 
   }
 
