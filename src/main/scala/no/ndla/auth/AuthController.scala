@@ -1,5 +1,7 @@
 package no.ndla.auth
 
+import javax.servlet.http.HttpServletRequest
+
 import com.typesafe.scalalogging.StrictLogging
 import no.ndla.auth.AuditLogger.logAudit
 import no.ndla.auth.Error.{AUTHENTICATION, NOT_FOUND}
@@ -26,6 +28,13 @@ class AuthController(implicit val swagger: Swagger) extends ScalatraServlet with
   val infoAboutMe = (apiOperation[NdlaUser]("infoAboutMe")
     summary "Information about the logged in user."
     notes "This will show information about the logged in user."
+    parameters(
+      headerParam[Option[String]]("app-key").description("Your app-key.")
+    ))
+
+  val logout = (apiOperation[Void]("logout")
+    summary "Logs out the currently logged in user."
+    notes "This will delete the app-key for the current user."
     parameters(
       headerParam[Option[String]]("app-key").description("Your app-key.")
     ))
@@ -121,6 +130,18 @@ class AuthController(implicit val swagger: Swagger) extends ScalatraServlet with
     }
   }
 
+  get("/logout", operation(logout)) {
+    checkRequiredHeaderParameters(request, "X-Consumer-ID", "app-key") match {
+      case Success(_) =>
+      case Failure(ex) => halt(400, Error(AUTHENTICATION, s"Missing parameter ${ex.getMessage}"))
+    }
+
+    val consumerId = request.getHeader("X-Consumer-ID")
+    val appkey = request.getHeader("app-key")
+
+    KongApi.deleteKeyForConsumer(appkey, consumerId)
+  }
+
   get("/login/google", operation(loginGoogle)) {
     val successUrl = WhiteListedUrls.getSuccessUrl(params.get("successUrl"))
     val failureUrl = WhiteListedUrls.getFailureUrl(params.get("failureUrl"))
@@ -207,7 +228,10 @@ class AuthController(implicit val swagger: Swagger) extends ScalatraServlet with
   }
 
   def checkRequiredParameters(actualParameters: Params, requiredParameters: String*): Try[Unit] = {
-    Try(requiredParameters.foreach(parameter => require(actualParameters.get(parameter).map(_.trim.nonEmpty).isDefined,
-      s"Required parameter '$parameter' is missing or empty.")))
+    Try(requiredParameters.foreach(parameter => require(actualParameters.get(parameter).map(_.trim.nonEmpty).isDefined, s"Required parameter '$parameter' is missing or empty.")))
+  }
+
+  def checkRequiredHeaderParameters(request: HttpServletRequest, requiredParameters: String*):Try[Unit] = {
+    Try(requiredParameters.foreach(parameter => require(Option(request.getHeader(parameter)).map(_.trim.nonEmpty).isDefined, s"Required header-parameter '$parameter' is missing or empty.")))
   }
 }

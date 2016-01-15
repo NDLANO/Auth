@@ -12,11 +12,21 @@ case class KongKeys(data: List[KongKey])
 case class KongKey(consumer_id: String, created_at: BigInt, id: String, key: String)
 
 object KongApi extends StrictLogging {
+
   val KONG_HOSTNAME = "kong"
   // In etc hosts when linking containers.
   val KONG_ADMIN_PORT = "8001"
 
   implicit val formats = DefaultFormats // Brings in default date formats etc.
+
+  def deleteKeyForConsumer(appkey: String, consumerId: String): Unit = {
+    getKeys(consumerId).find(_.key == appkey) match {
+      case Some(key) => {
+        val deleteKey: HttpResponse[String] = Http(s"http://$KONG_HOSTNAME:$KONG_ADMIN_PORT/consumers/$consumerId/key-auth/${key.id}").method("DELETE").asString
+        if(deleteKey.isError) throw new RuntimeException(s"Could not log out consumer. Got error ${deleteKey.code}")
+      }
+    }
+  }
 
   def getOrCreateKeyAndConsumer(username: String): KongKey = {
     // We can not use a valid uuid as username because of kong api /consumers/{username or id} where is uuid. So we prefix it
@@ -38,7 +48,7 @@ object KongApi extends StrictLogging {
       createConsumer(username)
       return
     }
-    if (getConsumer.isError) throw new RuntimeException(s"Checking consumer returned: $getConsumer.code")
+    if (getConsumer.isError) throw new RuntimeException(s"Checking consumer returned: ${getConsumer.code}")
   }
 
   private def createConsumer(id: String): Unit = {
