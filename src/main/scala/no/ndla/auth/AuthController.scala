@@ -176,6 +176,8 @@ class AuthController(implicit val swagger: Swagger) extends ScalatraServlet with
   }
 
   get("/login/facebook/verify", operation(verifyFacebook)) {
+    val (successUrl, failureUrl) = StateService.getRedirectUrls(params("state"))
+
     if (params.contains("error")) {
       val error = params.get("error")
       val error_code = params.get("error_code")
@@ -191,7 +193,7 @@ class AuthController(implicit val swagger: Swagger) extends ScalatraServlet with
                                 """.stripMargin
 
       logAudit(errorMessage)
-      halt(403, errorMessage)
+      halt(status = 302, headers = Map("Location" -> failureUrl))
     }
 
     checkRequiredParameters(params, "code", "state") match {
@@ -202,7 +204,7 @@ class AuthController(implicit val swagger: Swagger) extends ScalatraServlet with
     val user: NdlaUser = FacebookAuthService.getOrCreateNdlaUser(params("code"), params("state"))
     val kongKey: KongKey = KongApi.getOrCreateKeyAndConsumer(user.id)
 
-    Ok(body = user, Map("apikey" -> kongKey.key))
+    halt(status = 302, headers = Map("app-key" -> kongKey.key, "Location" -> successUrl.replace("{appkey}", kongKey.key)))
   }
 
   get("/login/twitter", operation(loginTwitter)) {
