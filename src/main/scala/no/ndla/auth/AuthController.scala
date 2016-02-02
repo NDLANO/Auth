@@ -140,6 +140,7 @@ class AuthController(implicit val swagger: Swagger) extends ScalatraServlet with
     val appkey = request.getHeader("app-key")
 
     KongApi.deleteKeyForConsumer(appkey, consumerId)
+    halt(status = 204)
   }
 
   get("/login/google", operation(loginGoogle)) {
