@@ -2,7 +2,7 @@ package no.ndla.auth.providers.google
 
 import com.typesafe.scalalogging.StrictLogging
 import no.ndla.auth.UserType._
-import no.ndla.auth.ndla.{Users, NdlaUser}
+import no.ndla.auth.ndla.Users
 import scalaj.http.HttpResponse
 import org.json4s._
 import org.json4s.native.JsonMethods._

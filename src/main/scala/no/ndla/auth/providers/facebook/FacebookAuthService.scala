@@ -1,7 +1,7 @@
 package no.ndla.auth.providers.facebook
 
 import no.ndla.auth.exception.AccessTokenVerificationException
-import no.ndla.auth.ndla.{NdlaUser, Users}
+import no.ndla.auth.ndla.Users
 
 import scalaj.http.HttpResponse
 import org.json4s._

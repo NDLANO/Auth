@@ -2,12 +2,13 @@ package no.ndla.auth.providers.twitter
 
 import com.github.scribejava.apis.TwitterApi
 import com.github.scribejava.core.builder.ServiceBuilder
-import com.github.scribejava.core.oauth.OAuthService
 import com.github.scribejava.core.model._
+import com.github.scribejava.core.oauth.OAuthService
+import no.ndla.auth.UserType
 import no.ndla.auth.UserType._
 import no.ndla.auth.exception.AccessTokenVerificationException
-import no.ndla.auth.ndla.{NdlaUser, Users}
-import no.ndla.auth.{AuthProperties, EnvironmentVariable, ExternalUser, UserType}
+import no.ndla.auth.ndla.Users
+import no.ndla.auth._
 import org.json4s.DefaultFormats
 import org.json4s.native.JsonMethods._
 

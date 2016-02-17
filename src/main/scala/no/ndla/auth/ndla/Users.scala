@@ -7,7 +7,7 @@ import com.datastax.driver.core.utils.UUIDs
 import com.datastax.driver.core._
 import no.ndla.auth.providers.google.GoogleUser
 import no.ndla.auth.providers.twitter.TwitterUser
-import no.ndla.auth.{NoSuchUserException, ExternalUser}
+import no.ndla.auth.{NdlaUserName, NdlaUser, NoSuchUserException, ExternalUser}
 import no.ndla.auth.providers.facebook.FacebookUser
 import org.joda.time.DateTime
 import no.ndla.auth.database.Cassandra.session
@@ -48,6 +48,11 @@ object Users {
       case Some(row) => NdlaUser(ndlaUserId, Option(row.getString("first_name")), Option(row.getString("middle_name")), Option(row.getString("last_name")), Option(row.getString("email")), new DateTime(UUIDs.unixTimestamp(row.getUUID("created"))))
       case None => throw new NoSuchUserException(s"No user with id $ndlaUserId found")
     }
+  }
+
+  def getNdlaUserName(ndlaUserId: String): NdlaUserName = {
+    val ndlaUser = getNdlaUser(ndlaUserId)
+    NdlaUserName(ndlaUser.first_name, ndlaUser.middle_name, ndlaUser.last_name)
   }
 
   private def findOrCreateUser(facebookUser: FacebookUser): Option[String] = {
@@ -101,12 +106,3 @@ object Users {
     }
   }
 }
-
-case class NdlaUser(id: String,
-                    first_name: Option[String],
-                    middle_name: Option[String],
-                    last_name: Option[String],
-                    email: Option[String],
-                    created: DateTime,
-                    newUser: Boolean = false
-                     )

@@ -8,7 +8,7 @@ import no.ndla.auth.Error.{AUTHENTICATION, NOT_FOUND}
 import no.ndla.auth.providers.facebook.FacebookAuthService
 import no.ndla.auth.providers.google.GoogleAuthService
 import no.ndla.auth.kong.{KongKey, KongApi}
-import no.ndla.auth.ndla.{Users, NdlaUser}
+import no.ndla.auth.ndla.Users
 import no.ndla.auth.providers.twitter.TwitterAuthService
 import org.scalatra.{Params, ScalatraServlet, Ok}
 import org.json4s.{DefaultFormats, Formats}
@@ -21,7 +21,7 @@ class AuthController(implicit val swagger: Swagger) extends ScalatraServlet with
 
   // Sets up automatic case class to JSON output serialization, required by
   // the JValueResult trait.
-  protected implicit val jsonFormats: Formats = DefaultFormats.preservingEmptyValues ++ org.json4s.ext.JodaTimeSerializers.all
+  protected implicit val jsonFormats: Formats = DefaultFormats ++ org.json4s.ext.JodaTimeSerializers.all
 
   protected val applicationDescription = "API for accessing authentication API from ndla.no."
 
@@ -31,6 +31,11 @@ class AuthController(implicit val swagger: Swagger) extends ScalatraServlet with
     parameters(
       headerParam[Option[String]]("app-key").description("Your app-key.")
     ))
+
+  val nameOfUser = (apiOperation[NdlaUserName]("nameOfUser")
+    summary "Name of an user."
+    notes "This will show the name of the user with the given id."
+    parameters(pathParam[String]("user_id").description("The user id to get name for.")))
 
   val logout = (apiOperation[Void]("logout")
     summary "Logs out the currently logged in user."
@@ -126,6 +131,13 @@ class AuthController(implicit val swagger: Swagger) extends ScalatraServlet with
   get("/me", operation(infoAboutMe)) {
     Option(request.getHeader("X-Consumer-Username")) match {
       case Some(user) => Users.getNdlaUser(user.replace(AuthProperties.KONG_USERNAME_PREFIX, ""))
+      case None => halt(status = 404, body = Error(NOT_FOUND, s"No username found in request"))
+    }
+  }
+
+  get("/about/:user_id", operation(nameOfUser)) {
+    params.get("user_id") match {
+      case Some(user) => Users.getNdlaUserName(user)
       case None => halt(status = 404, body = Error(NOT_FOUND, s"No username found in request"))
     }
   }
