@@ -5,11 +5,7 @@ import javax.servlet.http.HttpServletRequest
 import com.typesafe.scalalogging.StrictLogging
 import no.ndla.auth.AuditLogger.logAudit
 import no.ndla.auth.Error.{AUTHENTICATION, NOT_FOUND}
-import no.ndla.auth.providers.facebook.FacebookAuthService
-import no.ndla.auth.providers.google.GoogleAuthService
-import no.ndla.auth.kong.{KongKey, KongApi}
-import no.ndla.auth.ndla.{Users, NdlaUser}
-import no.ndla.auth.providers.twitter.TwitterAuthService
+import no.ndla.auth.model.{KongKey, NdlaUser}
 import org.scalatra.{Params, ScalatraServlet, Ok}
 import org.json4s.{DefaultFormats, Formats}
 import org.scalatra.json.NativeJsonSupport
@@ -18,6 +14,13 @@ import org.scalatra.swagger._
 import scala.util.{Success, Failure, Try}
 
 class AuthController(implicit val swagger: Swagger) extends ScalatraServlet with NativeJsonSupport with SwaggerSupport with StrictLogging {
+
+  val usersRepository = ComponentRegistry.usersRepository
+  val stateRepository = ComponentRegistry.stateRepository
+  val kongService = ComponentRegistry.kongService
+  val googleAuthService = ComponentRegistry.googleAuthService
+  val twitterAuthService = ComponentRegistry.twitterAuthService
+  val facebookAuthService = ComponentRegistry.facebookAuthService
 
   // Sets up automatic case class to JSON output serialization, required by
   // the JValueResult trait.
@@ -123,9 +126,11 @@ class AuthController(implicit val swagger: Swagger) extends ScalatraServlet with
     halt(status = statusCode, body = error)
   }
 
+  //val userRepository = COmponentREgistry.userRepository
+
   get("/me", operation(infoAboutMe)) {
     Option(request.getHeader("X-Consumer-Username")) match {
-      case Some(user) => Users.getNdlaUser(user.replace(AuthProperties.KONG_USERNAME_PREFIX, ""))
+      case Some(user) => usersRepository.getNdlaUser(user.replace(AuthProperties.KONG_USERNAME_PREFIX, ""))
       case None => halt(status = 404, body = Error(NOT_FOUND, s"No username found in request"))
     }
   }
@@ -139,18 +144,18 @@ class AuthController(implicit val swagger: Swagger) extends ScalatraServlet with
     val consumerId = request.getHeader("X-Consumer-ID")
     val appkey = request.getHeader("app-key")
 
-    KongApi.deleteKeyForConsumer(appkey, consumerId)
+    kongService.deleteKeyForConsumer(appkey, consumerId)
     halt(status = 204)
   }
 
   get("/login/google", operation(loginGoogle)) {
     val successUrl = WhiteListedUrls.getSuccessUrl(params.get("successUrl"))
     val failureUrl = WhiteListedUrls.getFailureUrl(params.get("failureUrl"))
-    redirect(GoogleAuthService.getRedirectUri(successUrl, failureUrl))
+    redirect(googleAuthService.getRedirectUri(successUrl, failureUrl))
   }
 
   get("/login/google/verify", operation(verifyGoogle)) {
-    val (successUrl, failureUrl) = StateService.getRedirectUrls(params("state"))
+    val (successUrl, failureUrl) = stateRepository.getRedirectUrls(params("state"))
 
     if (params.isDefinedAt("error")) {
       val errorMessage = s"Authentication failure from Google: ${params("error")}"
@@ -158,13 +163,13 @@ class AuthController(implicit val swagger: Swagger) extends ScalatraServlet with
       halt(status = 302, headers = Map("Location" -> failureUrl))
     }
 
-    checkRequiredParameters(params, GoogleAuthService.requiredParameters: _*) match {
+    checkRequiredParameters(params, googleAuthService.requiredParameters: _*) match {
       case Success(_) =>
       case Failure(ex) => halt(400, Error(AUTHENTICATION, s"Missing parameter ${ex.getMessage}"))
     }
 
-    val user: NdlaUser = GoogleAuthService.getOrCreateNdlaUser(params("code"), params("state"))
-    val kongKey: KongKey = KongApi.getOrCreateKeyAndConsumer(user.id)
+    val user: NdlaUser = googleAuthService.getOrCreateNdlaUser(params("code"), params("state"))
+    val kongKey: KongKey = kongService.getOrCreateKeyAndConsumer(user.id)
 
     halt(status = 302, headers = Map("app-key" -> kongKey.key, "Location" -> successUrl.replace("{appkey}", kongKey.key)))
 
@@ -173,11 +178,11 @@ class AuthController(implicit val swagger: Swagger) extends ScalatraServlet with
   get("/login/facebook", operation(loginFacebook)) {
     val successUrl = WhiteListedUrls.getSuccessUrl(params.get("successUrl"))
     val failureUrl = WhiteListedUrls.getFailureUrl(params.get("failureUrl"))
-    redirect(FacebookAuthService.getRedirect(successUrl, failureUrl))
+    redirect(facebookAuthService.getRedirect(successUrl, failureUrl))
   }
 
   get("/login/facebook/verify", operation(verifyFacebook)) {
-    val (successUrl, failureUrl) = StateService.getRedirectUrls(params("state"))
+    val (successUrl, failureUrl) = stateRepository.getRedirectUrls(params("state"))
 
     if (params.contains("error")) {
       val error = params.get("error")
@@ -202,14 +207,14 @@ class AuthController(implicit val swagger: Swagger) extends ScalatraServlet with
       case Failure(ex) => halt(400, Error(AUTHENTICATION, s"Missing parameter ${ex.getMessage}"))
     }
 
-    val user: NdlaUser = FacebookAuthService.getOrCreateNdlaUser(params("code"), params("state"))
-    val kongKey: KongKey = KongApi.getOrCreateKeyAndConsumer(user.id)
+    val user: NdlaUser = facebookAuthService.getOrCreateNdlaUser(params("code"), params("state"))
+    val kongKey: KongKey = kongService.getOrCreateKeyAndConsumer(user.id)
 
     halt(status = 302, headers = Map("app-key" -> kongKey.key, "Location" -> successUrl.replace("{appkey}", kongKey.key)))
   }
 
   get("/login/twitter", operation(loginTwitter)) {
-    redirect(TwitterAuthService.getRedirectUri)
+    redirect(twitterAuthService.getRedirectUri)
   }
 
   get("/login/twitter/verify", operation(verifyTwitter)) {
@@ -224,8 +229,8 @@ class AuthController(implicit val swagger: Swagger) extends ScalatraServlet with
       case Failure(ex) => halt(400, Error(AUTHENTICATION, s"Missing parameter ${ex.getMessage}"))
     }
 
-    val user: NdlaUser = TwitterAuthService.getOrCreateNdlaUser(params("oauth_token"), params("oauth_verifier"))
-    val kongKey: KongKey = KongApi.getOrCreateKeyAndConsumer(user.id)
+    val user: NdlaUser = twitterAuthService.getOrCreateNdlaUser(params("oauth_token"), params("oauth_verifier"))
+    val kongKey: KongKey = kongService.getOrCreateKeyAndConsumer(user.id)
 
     Ok(body = user, Map("apikey" -> kongKey.key))
   }

@@ -1,4 +1,4 @@
-package no.ndla.auth
+package no.ndla.auth.model
 
 import no.ndla.auth.UserType.UserType
 

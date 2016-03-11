@@ -41,7 +41,9 @@ lazy val auth = (project in file(".")).
             "org.scalatra" %% "scalatra-swagger"  % Scalatraversion,
             "com.datastax.cassandra" % "cassandra-driver-core" % "2.1.8",
             "org.eclipse.jetty" % "jetty-webapp" % "9.2.10.v20150310" % "container;compile",
-            "com.github.scribejava" % "scribejava-apis" % "2.1.0"
+            "com.github.scribejava" % "scribejava-apis" % "2.1.0",
+            "org.scalatest" % "scalatest_2.11" % ScalaTestVersion % "test",
+            "org.mockito" % "mockito-all" % MockitoVersion % "test"
         )
     ).enablePlugins(DockerPlugin).enablePlugins(GitVersioning).enablePlugins(JettyPlugin)
 
