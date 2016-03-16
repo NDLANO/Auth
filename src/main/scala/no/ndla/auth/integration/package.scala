@@ -1,6 +1,6 @@
-package no.ndla
+package no.ndla.auth
 
-package object auth {
+package object integration {
 
     /**
       * Returns a string with the elements in the map with the format key1=value1&key2=value2...

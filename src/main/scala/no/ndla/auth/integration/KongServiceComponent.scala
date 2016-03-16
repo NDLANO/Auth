@@ -1,6 +1,6 @@
-package no.ndla.auth.integration.providers
+package no.ndla.auth.integration
 
-import com.typesafe.scalalogging.StrictLogging
+import com.typesafe.scalalogging.LazyLogging
 import no.ndla.auth.AuthProperties
 import no.ndla.auth.model.{KongKey, KongKeys}
 import org.json4s.DefaultFormats
@@ -11,20 +11,22 @@ import scalaj.http.{Http, HttpResponse}
 trait KongServiceComponent {
   val kongService: KongService
 
-  class KongService extends StrictLogging {
+  class KongService extends LazyLogging {
 
-    val KONG_HOSTNAME = "kong"
+    val KONG_HOSTNAME = AuthProperties.get("KONG_HOSTNAME")
     // In etc hosts when linking containers.
-    val KONG_ADMIN_PORT = "8001"
+    val KONG_ADMIN_PORT = AuthProperties.get("KONG_ADMIN_PORT")
+    val KONG_BASE_URL = s"http://$KONG_HOSTNAME:$KONG_ADMIN_PORT/consumers/"
 
     implicit val formats = DefaultFormats // Brings in default date formats etc.
 
     def deleteKeyForConsumer(appkey: String, consumerId: String): Unit = {
       getKeys(consumerId).find(_.key == appkey) match {
         case Some(key) => {
-          val deleteKey: HttpResponse[String] = Http(s"http://$KONG_HOSTNAME:$KONG_ADMIN_PORT/consumers/$consumerId/key-auth/${key.id}").method("DELETE").asString
+          val deleteKey: HttpResponse[String] = Http(s"$KONG_BASE_URL/$consumerId/key-auth/${key.id}").method("DELETE").asString
           if (deleteKey.isError) throw new RuntimeException(s"Could not log out consumer. Got error ${deleteKey.code}")
         }
+        case None =>
       }
     }
 
@@ -35,24 +37,25 @@ trait KongServiceComponent {
       createConsumerIfNotExists(usernameWithPrefix)
       val keys: List[KongKey] = getKeys(usernameWithPrefix)
 
-      keys.size match {
-        case 0 => createKey(usernameWithPrefix)
-        case _ => keys.head // Always return the first key.
+      keys.isEmpty match {
+        case true => createKey(usernameWithPrefix)
+        case false => keys.head // Always return the first key.
       }
     }
 
     private def createConsumerIfNotExists(username: String): Unit = {
-      val getConsumer: HttpResponse[String] = Http(s"http://$KONG_HOSTNAME:$KONG_ADMIN_PORT/consumers/$username").asString
-      if (getConsumer.is2xx) return
-      if (getConsumer.isCodeInRange(404, 404)) {
-        createConsumer(username)
-        return
+      val getConsumer: HttpResponse[String] = Http(s"$KONG_BASE_URL/$username").asString
+
+      getConsumer.isError match {
+        case true => throw new RuntimeException(s"Checking consumer returned: ${getConsumer.code}")
+        case false => {
+          if(getConsumer.isCodeInRange(404,404)) createConsumer(username)
+        }
       }
-      if (getConsumer.isError) throw new RuntimeException(s"Checking consumer returned: ${getConsumer.code}")
     }
 
     private def createConsumer(id: String): Unit = {
-      val response: HttpResponse[String] = Http(s"http://$KONG_HOSTNAME:$KONG_ADMIN_PORT/consumers/").postForm(Seq(
+      val response: HttpResponse[String] = Http(s"$KONG_BASE_URL/").postForm(Seq(
         "username" -> id
       )).asString
 
@@ -62,7 +65,7 @@ trait KongServiceComponent {
     }
 
     private def createKey(id: String): KongKey = {
-      val response: HttpResponse[String] = Http(s"http://$KONG_HOSTNAME:$KONG_ADMIN_PORT/consumers/$id/key-auth").method("POST").asString
+      val response: HttpResponse[String] = Http(s"$KONG_BASE_URL/$id/key-auth").method("POST").asString
 
       if (response.isError) {
         throw new RuntimeException("Unable to create key: " + response.body)
@@ -71,7 +74,7 @@ trait KongServiceComponent {
     }
 
     private def getKeys(username: String): List[KongKey] = {
-      val response: HttpResponse[String] = Http(s"http://$KONG_HOSTNAME:$KONG_ADMIN_PORT/consumers/$username/key-auth/").asString
+      val response: HttpResponse[String] = Http(s"$KONG_BASE_URL/$username/key-auth/").asString
       parse(response.body).extract[KongKeys].data
     }
   }

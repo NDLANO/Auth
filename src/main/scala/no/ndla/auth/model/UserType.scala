@@ -1,4 +1,4 @@
-package no.ndla.auth
+package no.ndla.auth.model
 
 object UserType extends Enumeration {
     type UserType = Value
