@@ -2,8 +2,9 @@ package no.ndla.auth.repository
 
 import java.util.UUID
 import com.datastax.driver.core.{BoundStatement, PreparedStatement, Row, ResultSet}
+import no.ndla.auth.exception.NoSuchUserException
 import no.ndla.auth.model._
-import no.ndla.auth.{NoSuchUserException, TestEnvironment, UnitSuite}
+import no.ndla.auth.{TestEnvironment, UnitSuite}
 import org.mockito.Matchers._
 import org.mockito.Mockito._
 import org.scalatest.PrivateMethodTester
@@ -18,7 +19,7 @@ class UsersRepositoryTest extends UnitSuite with TestEnvironment with PrivateMet
 
   test("That createNdlaUser returns an ndla user id") {
     val insertNdlaUser = mock[PreparedStatement]
-    when(session.prepare(any[String])).thenReturn(insertNdlaUser)
+    when(cassandraSession.prepare(any[String])).thenReturn(insertNdlaUser)
     when(insertNdlaUser.bind(anyVararg())).thenReturn(mock[BoundStatement])
 
     val createNdlaUser = PrivateMethod[String]('createNdlaUser)
@@ -36,7 +37,7 @@ class UsersRepositoryTest extends UnitSuite with TestEnvironment with PrivateMet
     when(row.getUUID("created")).thenReturn(UUID.fromString("5299e153-e601-19e5-96fe-e32a75c0b2b5"))
 
     val resultSet = mock[ResultSet]
-    when(session.execute(any[String])).thenReturn(resultSet)
+    when(cassandraSession.execute(any[String])).thenReturn(resultSet)
     when(resultSet.one()).thenReturn(row)
 
     val testUser = users.getNdlaUser("0123456789")
@@ -51,7 +52,7 @@ class UsersRepositoryTest extends UnitSuite with TestEnvironment with PrivateMet
   test("That getNdlaUser throws a NoSuchUserException if the user does not exist") {
     val resultSet = mock[ResultSet]
     when(resultSet.one()).thenReturn(null)
-    when(session.execute(any[String])).thenReturn(resultSet)
+    when(cassandraSession.execute(any[String])).thenReturn(resultSet)
 
     intercept[NoSuchUserException] {
       users.getNdlaUser("0123456789")
@@ -60,13 +61,13 @@ class UsersRepositoryTest extends UnitSuite with TestEnvironment with PrivateMet
 
   test("That findOrCreateUser FacebookUser returns an ndla id if the user exists") {
     val insertUserIntoFacebookTable: PreparedStatement = mock[PreparedStatement]
-    when(session.prepare(any[String])).thenReturn(insertUserIntoFacebookTable)
+    when(cassandraSession.prepare(any[String])).thenReturn(insertUserIntoFacebookTable)
 
     val boundStatement = mock[BoundStatement]
     when(insertUserIntoFacebookTable.bind(anyVararg())).thenReturn(boundStatement)
 
     val result = mock[ResultSet]
-    when(session.execute(boundStatement)).thenReturn(result)
+    when(cassandraSession.execute(boundStatement)).thenReturn(result)
 
     when(result.wasApplied()).thenReturn(false)
 
@@ -84,13 +85,13 @@ class UsersRepositoryTest extends UnitSuite with TestEnvironment with PrivateMet
 
   test("That findOrCreateUser FacebookUser returns None if the user did not exist and was created") {
     val insertUserIntoFacebookTable: PreparedStatement = mock[PreparedStatement]
-    when(session.prepare(any[String])).thenReturn(insertUserIntoFacebookTable)
+    when(cassandraSession.prepare(any[String])).thenReturn(insertUserIntoFacebookTable)
 
     val boundStatement = mock[BoundStatement]
     when(insertUserIntoFacebookTable.bind(anyVararg())).thenReturn(boundStatement)
 
     val result = mock[ResultSet]
-    when(session.execute(boundStatement)).thenReturn(result)
+    when(cassandraSession.execute(boundStatement)).thenReturn(result)
 
     when(result.wasApplied()).thenReturn(true)
 
@@ -106,13 +107,13 @@ class UsersRepositoryTest extends UnitSuite with TestEnvironment with PrivateMet
 
   test("That findOrCreateUser TwitterUser returns an ndla id if the user exists") {
     val insertUserIntoTwitterTable: PreparedStatement = mock[PreparedStatement]
-    when(session.prepare(any[String])).thenReturn(insertUserIntoTwitterTable)
+    when(cassandraSession.prepare(any[String])).thenReturn(insertUserIntoTwitterTable)
 
     val boundStatement = mock[BoundStatement]
     when(insertUserIntoTwitterTable.bind(anyVararg())).thenReturn(boundStatement)
 
     val result = mock[ResultSet]
-    when(session.execute(boundStatement)).thenReturn(result)
+    when(cassandraSession.execute(boundStatement)).thenReturn(result)
 
     when(result.wasApplied()).thenReturn(false)
 
@@ -130,13 +131,13 @@ class UsersRepositoryTest extends UnitSuite with TestEnvironment with PrivateMet
 
   test("That findOrCreateUser TwitterUser returns None if the user did not exist and was created") {
     val insertUserIntoTwitterTable: PreparedStatement = mock[PreparedStatement]
-    when(session.prepare(any[String])).thenReturn(insertUserIntoTwitterTable)
+    when(cassandraSession.prepare(any[String])).thenReturn(insertUserIntoTwitterTable)
 
     val boundStatement = mock[BoundStatement]
     when(insertUserIntoTwitterTable.bind(anyVararg())).thenReturn(boundStatement)
 
     val result = mock[ResultSet]
-    when(session.execute(boundStatement)).thenReturn(result)
+    when(cassandraSession.execute(boundStatement)).thenReturn(result)
 
     when(result.wasApplied()).thenReturn(true)
 
@@ -149,13 +150,13 @@ class UsersRepositoryTest extends UnitSuite with TestEnvironment with PrivateMet
 
   test("That findOrCreateUser GoogleUser returns an ndla id if the user exists") {
     val insertUserIntoGoogleTable: PreparedStatement = mock[PreparedStatement]
-    when(session.prepare(any[String])).thenReturn(insertUserIntoGoogleTable)
+    when(cassandraSession.prepare(any[String])).thenReturn(insertUserIntoGoogleTable)
 
     val boundStatement = mock[BoundStatement]
     when(insertUserIntoGoogleTable.bind(anyVararg())).thenReturn(boundStatement)
 
     val result = mock[ResultSet]
-    when(session.execute(boundStatement)).thenReturn(result)
+    when(cassandraSession.execute(boundStatement)).thenReturn(result)
 
     when(result.wasApplied()).thenReturn(false)
 
@@ -175,13 +176,13 @@ class UsersRepositoryTest extends UnitSuite with TestEnvironment with PrivateMet
 
   test("That findOrCreateUser GoogleUser returns None if the user did not exist and was created") {
     val insertUserIntoGoogleTable: PreparedStatement = mock[PreparedStatement]
-    when(session.prepare(any[String])).thenReturn(insertUserIntoGoogleTable)
+    when(cassandraSession.prepare(any[String])).thenReturn(insertUserIntoGoogleTable)
 
     val boundStatement = mock[BoundStatement]
     when(insertUserIntoGoogleTable.bind(anyVararg())).thenReturn(boundStatement)
 
     val result = mock[ResultSet]
-    when(session.execute(boundStatement)).thenReturn(result)
+    when(cassandraSession.execute(boundStatement)).thenReturn(result)
 
     when(result.wasApplied()).thenReturn(true)
 

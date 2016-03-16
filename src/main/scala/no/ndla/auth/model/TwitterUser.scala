@@ -1,7 +1,6 @@
 package no.ndla.auth.model
 
-import no.ndla.auth.UserType
-import no.ndla.auth.UserType._
+import UserType._
 
 case class TwitterUser(
                         override val id: String,

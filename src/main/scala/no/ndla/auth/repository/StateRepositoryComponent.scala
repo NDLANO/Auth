@@ -16,16 +16,15 @@ trait StateRepositoryComponent {
 
     class StateRepository {
 
-        // Specify how long, in seconds, the state variable will live in the database.
-        val valid_in_seconds = TimeUnit.MINUTES.toSeconds(10)
+        val stateTimeToLiveInSeconds = TimeUnit.MINUTES.toSeconds(10)
 
         // Inserts a new state UUID in the database. The user must complete the login process withing the number of seconds specified in valid_in_seconds.
-        val CREATE_STATE: PreparedStatement = session.prepare(s"INSERT INTO state (id, success, failure) VALUES (?, ?, ?) USING TTL $valid_in_seconds")
+        val CREATE_STATE: PreparedStatement = cassandraSession.prepare(s"INSERT INTO state (id, success, failure) VALUES (?, ?, ?) USING TTL $stateTimeToLiveInSeconds")
 
-        val GET_REDIRECT_URLS: PreparedStatement = session.prepare("SELECT success, failure from state where ID = ?")
+        val GET_REDIRECT_URLS: PreparedStatement = cassandraSession.prepare("SELECT success, failure from state where ID = ?")
 
         // Verifies that the state exists and deletes it so that it cat not be reused.
-        val CHECK_AND_DELETE_STATE: PreparedStatement = session.prepare(s"DELETE FROM state where ID = ? IF EXISTS")
+        val CHECK_AND_DELETE_STATE: PreparedStatement = cassandraSession.prepare(s"DELETE FROM state where ID = ? IF EXISTS")
 
         /**
           * Creates a new state variable in the database.
@@ -34,15 +33,14 @@ trait StateRepositoryComponent {
           */
         def createState(successUrl: String, failureUrl: String): UUID = {
             val uuid = UUIDs.random()
-            session.execute(CREATE_STATE.bind(uuid, successUrl, failureUrl))
+            cassandraSession.execute(CREATE_STATE.bind(uuid, successUrl, failureUrl))
             uuid
         }
 
         def getRedirectUrls(uuid: String): (String, String) = {
-            val row: Row = session.execute(GET_REDIRECT_URLS.bind(asUuid(uuid))).one()
+            val row: Row = cassandraSession.execute(GET_REDIRECT_URLS.bind(asUuid(uuid))).one()
             (row.getString("success"), row.getString("failure"))
         }
-
 
         /**
           * Check that the given string is a valid state that exists in the database.
@@ -57,7 +55,7 @@ trait StateRepositoryComponent {
         }
 
         def isStateValid(uuid: UUID): Boolean = {
-            val resultSet: ResultSet = session.execute(CHECK_AND_DELETE_STATE.bind(uuid))
+            val resultSet: ResultSet = cassandraSession.execute(CHECK_AND_DELETE_STATE.bind(uuid))
             resultSet.wasApplied()
         }
 

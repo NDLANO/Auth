@@ -1,7 +1,6 @@
 package no.ndla.auth.model
 
-import no.ndla.auth.UserType
-import no.ndla.auth.UserType._
+import UserType._
 
 case class GoogleUser(
                        id: String,
@@ -16,12 +15,13 @@ case class GoogleUser(
   override val middle_name = name.flatMap(_.middleName)
   override val last_name = name.flatMap(_.familyName)
   override val email = emails.headOption.map(_.value)
-  // TODO: Get the best type
   override val userType: UserType = UserType.GOOGLE
 }
 
 case class Image(url: String, isDefault: Boolean)
 
-case class Name(familyName: Option[String], middleName: Option[String], givenName: Option[String])
+case class Name(familyName: Option[String],
+                middleName: Option[String],
+                givenName: Option[String])
 
 case class Email(value: String, `type`: String)

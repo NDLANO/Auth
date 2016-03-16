@@ -1,6 +1,6 @@
 package no.ndla.auth.model
 
-import no.ndla.auth.UserType
+import UserType._
 
 case class FacebookUser(id: String,
                         ndla_id: Option[String],

@@ -2,9 +2,9 @@ package no.ndla.auth
 
 import no.ndla.auth.database.Cassandra
 import com.datastax.driver.core.{PreparedStatement, Session, Cluster}
-import no.ndla.auth.integration.providers.KongServiceComponent
+import no.ndla.auth.integration.KongServiceComponent
 import no.ndla.auth.repository.{StateRepositoryComponent, UsersRepositoryComponent}
-import no.ndla.auth.service.{TwitterAuthServiceComponent, GoogleAuthServiceComponent, FacebookAuthServiceComponent}
+import no.ndla.auth.integration.providers.{TwitterAuthServiceComponent, GoogleAuthServiceComponent, FacebookAuthServiceComponent}
 import org.scalatest.mock.MockitoSugar
 import org.mockito.Matchers._
 import org.mockito.Mockito._
@@ -19,8 +19,8 @@ trait TestEnvironment
     with Cassandra
     with MockitoSugar
 {
-  val cluster = mock[Cluster]
-  val session = mock[Session]
+  val cassandraCluster = mock[Cluster]
+  val cassandraSession = mock[Session]
 
   val usersRepository = mock[UsersRepository]
   val stateRepository = mock[StateRepository]

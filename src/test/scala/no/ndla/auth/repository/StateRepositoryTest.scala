@@ -14,7 +14,7 @@ class StateRepositoryTest extends UnitSuite with TestEnvironment {
 
   override def beforeEach() = {
     val CHECK_AND_DELETE_STATE = mock[PreparedStatement]
-    when(session.prepare(any[String])).thenReturn(CHECK_AND_DELETE_STATE)
+    when(cassandraSession.prepare(any[String])).thenReturn(CHECK_AND_DELETE_STATE)
     when(CHECK_AND_DELETE_STATE.bind(any[String])).thenReturn(any[BoundStatement])
 
     state = new StateRepository
@@ -25,7 +25,7 @@ class StateRepositoryTest extends UnitSuite with TestEnvironment {
     val result: ResultSet = mock[ResultSet]
 
     when(result.wasApplied()).thenReturn(true)
-    when(session.execute(any[BoundStatement])).thenReturn(result)
+    when(cassandraSession.execute(any[BoundStatement])).thenReturn(result)
 
     assertResult(true) {
       state.isStateValid(testUuid.toString())
@@ -36,7 +36,7 @@ class StateRepositoryTest extends UnitSuite with TestEnvironment {
     val testUuid = UUID.fromString("0f5ba406-59af-437a-a856-9430f2a3ad78")
     val result: ResultSet = mock[ResultSet]
     when(result.wasApplied()).thenReturn(false)
-    when(session.execute(any[BoundStatement])).thenReturn(result)
+    when(cassandraSession.execute(any[BoundStatement])).thenReturn(result)
 
     assertResult(false) {
       state.isStateValid(testUuid.toString())

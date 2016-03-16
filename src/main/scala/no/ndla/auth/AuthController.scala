@@ -2,18 +2,17 @@ package no.ndla.auth
 
 import javax.servlet.http.HttpServletRequest
 
-import com.typesafe.scalalogging.StrictLogging
+import com.typesafe.scalalogging.{LazyLogging, StrictLogging}
 import no.ndla.auth.AuditLogger.logAudit
-import no.ndla.auth.Error.{AUTHENTICATION, NOT_FOUND}
-import no.ndla.auth.model.{KongKey, NdlaUser}
+import no.ndla.auth.exception.{NoSuchUserException, ParameterMissingException, HeaderMissingException}
+import no.ndla.auth.model.{Error, KongKey, NdlaUser}
 import org.scalatra.{Params, ScalatraServlet, Ok}
 import org.json4s.{DefaultFormats, Formats}
 import org.scalatra.json.NativeJsonSupport
 import org.scalatra.swagger._
 
-import scala.util.{Success, Failure, Try}
 
-class AuthController(implicit val swagger: Swagger) extends ScalatraServlet with NativeJsonSupport with SwaggerSupport with StrictLogging {
+class AuthController(implicit val swagger: Swagger) extends ScalatraServlet with NativeJsonSupport with SwaggerSupport with LazyLogging {
 
   val usersRepository = ComponentRegistry.usersRepository
   val stateRepository = ComponentRegistry.stateRepository
@@ -117,34 +116,26 @@ class AuthController(implicit val swagger: Swagger) extends ScalatraServlet with
   }
 
   error {
-    case n: NoSuchUserException => logAndRenderError(404, Error(NOT_FOUND, "No user with given id found."), n)
+    case h: HeaderMissingException => halt(status = 403, Error(Error.HEADER_MISSING, h.getMessage))
+    case p: ParameterMissingException => halt(status = 400, Error(Error.PARAMETER_MISSING, p.getMessage))
+    case n: NoSuchUserException => logAndRenderError(404, Error(Error.NOT_FOUND, "No user with given id found."), n)
     case t: Throwable => logAndRenderError(500, Error.GenericError, t)
   }
 
-  private def logAndRenderError(statusCode: Int, error: Error, exception: Throwable): Unit = {
+  private def logAndRenderError(statusCode: Int, error: no.ndla.auth.model.Error, exception: Throwable): Unit = {
     logger.error(error.toString, exception)
     halt(status = statusCode, body = error)
   }
 
-  //val userRepository = COmponentREgistry.userRepository
-
   get("/me", operation(infoAboutMe)) {
     Option(request.getHeader("X-Consumer-Username")) match {
       case Some(user) => usersRepository.getNdlaUser(user.replace(AuthProperties.KONG_USERNAME_PREFIX, ""))
-      case None => halt(status = 404, body = Error(NOT_FOUND, s"No username found in request"))
+      case None => halt(status = 404, body = Error(Error.NOT_FOUND, s"No username found in request"))
     }
   }
 
   get("/logout", operation(logout)) {
-    checkRequiredHeaderParameters(request, "X-Consumer-ID", "app-key") match {
-      case Success(_) =>
-      case Failure(ex) => halt(400, Error(AUTHENTICATION, s"Missing parameter ${ex.getMessage}"))
-    }
-
-    val consumerId = request.getHeader("X-Consumer-ID")
-    val appkey = request.getHeader("app-key")
-
-    kongService.deleteKeyForConsumer(appkey, consumerId)
+    kongService.deleteKeyForConsumer(requireHeader("X-Consumer-ID"), requireHeader("app-key"))
     halt(status = 204)
   }
 
@@ -155,7 +146,9 @@ class AuthController(implicit val swagger: Swagger) extends ScalatraServlet with
   }
 
   get("/login/google/verify", operation(verifyGoogle)) {
-    val (successUrl, failureUrl) = stateRepository.getRedirectUrls(params("state"))
+    val stateParam = requireParam("state", params)
+    val codeParam = requireParam("code", params)
+    val (successUrl, failureUrl) = stateRepository.getRedirectUrls(stateParam)
 
     if (params.isDefinedAt("error")) {
       val errorMessage = s"Authentication failure from Google: ${params("error")}"
@@ -163,16 +156,10 @@ class AuthController(implicit val swagger: Swagger) extends ScalatraServlet with
       halt(status = 302, headers = Map("Location" -> failureUrl))
     }
 
-    checkRequiredParameters(params, googleAuthService.requiredParameters: _*) match {
-      case Success(_) =>
-      case Failure(ex) => halt(400, Error(AUTHENTICATION, s"Missing parameter ${ex.getMessage}"))
-    }
-
-    val user: NdlaUser = googleAuthService.getOrCreateNdlaUser(params("code"), params("state"))
+    val user: NdlaUser = googleAuthService.getOrCreateNdlaUser(codeParam, stateParam)
     val kongKey: KongKey = kongService.getOrCreateKeyAndConsumer(user.id)
 
     halt(status = 302, headers = Map("app-key" -> kongKey.key, "Location" -> successUrl.replace("{appkey}", kongKey.key)))
-
   }
 
   get("/login/facebook", operation(loginFacebook)) {
@@ -182,7 +169,9 @@ class AuthController(implicit val swagger: Swagger) extends ScalatraServlet with
   }
 
   get("/login/facebook/verify", operation(verifyFacebook)) {
-    val (successUrl, failureUrl) = stateRepository.getRedirectUrls(params("state"))
+    val stateParam = requireParam("state", params)
+    val codeParam = requireParam("code", params)
+    val (successUrl, failureUrl) = stateRepository.getRedirectUrls(stateParam)
 
     if (params.contains("error")) {
       val error = params.get("error")
@@ -202,12 +191,7 @@ class AuthController(implicit val swagger: Swagger) extends ScalatraServlet with
       halt(status = 302, headers = Map("Location" -> failureUrl))
     }
 
-    checkRequiredParameters(params, "code", "state") match {
-      case Success(_) =>
-      case Failure(ex) => halt(400, Error(AUTHENTICATION, s"Missing parameter ${ex.getMessage}"))
-    }
-
-    val user: NdlaUser = facebookAuthService.getOrCreateNdlaUser(params("code"), params("state"))
+    val user: NdlaUser = facebookAuthService.getOrCreateNdlaUser(codeParam, stateParam)
     val kongKey: KongKey = kongService.getOrCreateKeyAndConsumer(user.id)
 
     halt(status = 302, headers = Map("app-key" -> kongKey.key, "Location" -> successUrl.replace("{appkey}", kongKey.key)))
@@ -224,22 +208,29 @@ class AuthController(implicit val swagger: Swagger) extends ScalatraServlet with
       halt(403, errorMessage)
     }
 
-    checkRequiredParameters(params, "oauth_token", "oauth_verifier") match {
-      case Success(_) =>
-      case Failure(ex) => halt(400, Error(AUTHENTICATION, s"Missing parameter ${ex.getMessage}"))
-    }
-
-    val user: NdlaUser = twitterAuthService.getOrCreateNdlaUser(params("oauth_token"), params("oauth_verifier"))
+    val user: NdlaUser = twitterAuthService.getOrCreateNdlaUser(requireParam("oauth_token", params), requireParam("oauth_verifier", params))
     val kongKey: KongKey = kongService.getOrCreateKeyAndConsumer(user.id)
 
     Ok(body = user, Map("apikey" -> kongKey.key))
   }
 
-  def checkRequiredParameters(actualParameters: Params, requiredParameters: String*): Try[Unit] = {
-    Try(requiredParameters.foreach(parameter => require(actualParameters.get(parameter).map(_.trim.nonEmpty).isDefined, s"Required parameter '$parameter' is missing or empty.")))
+  def requireHeader(headerName: String)(implicit request: HttpServletRequest): String = {
+    request.header(headerName) match {
+      case Some(value) => value
+      case None => {
+        logger.warn(s"Request made to ${request.getRequestURI} without required header $headerName.")
+        throw new HeaderMissingException(s"The required header $headerName is missing.")
+      }
+    }
   }
 
-  def checkRequiredHeaderParameters(request: HttpServletRequest, requiredParameters: String*):Try[Unit] = {
-    Try(requiredParameters.foreach(parameter => require(Option(request.getHeader(parameter)).map(_.trim.nonEmpty).isDefined, s"Required header-parameter '$parameter' is missing or empty.")))
+  def requireParam(paramName: String, params: Params)(implicit request: HttpServletRequest): String = {
+    params.get(paramName) match {
+      case Some(value) => value
+      case None => {
+        logger.warn(s"Request made to ${request.getRequestURI} without required parameter $paramName")
+        throw new ParameterMissingException(s"The required parameter $paramName is missing")
+      }
+    }
   }
 }

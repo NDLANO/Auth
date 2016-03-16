@@ -16,7 +16,7 @@ trait KongServiceComponent {
     val KONG_HOSTNAME = AuthProperties.get("KONG_HOSTNAME")
     // In etc hosts when linking containers.
     val KONG_ADMIN_PORT = AuthProperties.get("KONG_ADMIN_PORT")
-    val KONG_BASE_URL = s"http://$KONG_HOSTNAME:$KONG_ADMIN_PORT/consumers/"
+    val KONG_BASE_URL = s"http://$KONG_HOSTNAME:$KONG_ADMIN_PORT/consumers"
 
     implicit val formats = DefaultFormats // Brings in default date formats etc.
 
@@ -45,13 +45,12 @@ trait KongServiceComponent {
 
     private def createConsumerIfNotExists(username: String): Unit = {
       val getConsumer: HttpResponse[String] = Http(s"$KONG_BASE_URL/$username").asString
-
-      getConsumer.isError match {
-        case true => throw new RuntimeException(s"Checking consumer returned: ${getConsumer.code}")
-        case false => {
-          if(getConsumer.isCodeInRange(404,404)) createConsumer(username)
-        }
+      if (getConsumer.isCodeInRange(404, 404)) {
+        createConsumer(username)
+        return
       }
+
+      if (getConsumer.isError) throw new RuntimeException(s"Checking consumer returned: ${getConsumer.code}")
     }
 
     private def createConsumer(id: String): Unit = {

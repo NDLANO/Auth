@@ -1,6 +1,6 @@
 package no.ndla.auth.model
 
-import no.ndla.auth.UserType.UserType
+import UserType.UserType
 
 trait ExternalUser {
     def id: String
