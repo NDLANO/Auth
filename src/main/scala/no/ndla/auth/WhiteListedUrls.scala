@@ -2,8 +2,8 @@ package no.ndla.auth
 
 object WhiteListedUrls {
 
-  val successUrls = AuthProperties.whiteListedSuccessUrls.split(",").map(_ split "->") collect { case Array(k, v) => (k.trim, v.trim) } toMap
-  val failureUrls = AuthProperties.whiteListedFailureUrls.split(",").map(_ split "->") collect { case Array(k, v) => (k.trim, v.trim) } toMap
+  val successUrls = AuthProperties.WhiteListedSuccessUrls.split(",").map(_ split "->") collect { case Array(k, v) => (k.trim, v.trim) } toMap
+  val failureUrls = AuthProperties.WhiteListedFailureUrls.split(",").map(_ split "->") collect { case Array(k, v) => (k.trim, v.trim) } toMap
 
   val defaultSuccessUrl = successUrls.head._2
   val defaultFailureUrl = failureUrls.head._2
