@@ -2,22 +2,23 @@ package no.ndla.auth
 
 import javax.servlet.http.HttpServletRequest
 
-import com.typesafe.scalalogging.StrictLogging
-import no.ndla.auth.AuditLogger.logAudit
-import no.ndla.auth.Error.{AUTHENTICATION, NOT_FOUND}
-import no.ndla.auth.providers.facebook.FacebookAuthService
-import no.ndla.auth.providers.google.GoogleAuthService
-import no.ndla.auth.kong.{KongKey, KongApi}
-import no.ndla.auth.ndla.{Users, NdlaUser}
-import no.ndla.auth.providers.twitter.TwitterAuthService
+import com.typesafe.scalalogging.{LazyLogging, StrictLogging}
+import no.ndla.auth.exception.{NoSuchUserException, ParameterMissingException, HeaderMissingException}
+import no.ndla.auth.model.{Error, KongKey, NdlaUser}
 import org.scalatra.{Params, ScalatraServlet, Ok}
 import org.json4s.{DefaultFormats, Formats}
 import org.scalatra.json.NativeJsonSupport
 import org.scalatra.swagger._
 
-import scala.util.{Success, Failure, Try}
 
-class AuthController(implicit val swagger: Swagger) extends ScalatraServlet with NativeJsonSupport with SwaggerSupport with StrictLogging {
+class AuthController(implicit val swagger: Swagger) extends ScalatraServlet with NativeJsonSupport with SwaggerSupport with LazyLogging {
+
+  val usersRepository = ComponentRegistry.usersRepository
+  val stateRepository = ComponentRegistry.stateRepository
+  val kongService = ComponentRegistry.kongService
+  val googleAuthService = ComponentRegistry.googleAuthService
+  val twitterAuthService = ComponentRegistry.twitterAuthService
+  val facebookAuthService = ComponentRegistry.facebookAuthService
 
   // Sets up automatic case class to JSON output serialization, required by
   // the JValueResult trait.
@@ -114,70 +115,62 @@ class AuthController(implicit val swagger: Swagger) extends ScalatraServlet with
   }
 
   error {
-    case n: NoSuchUserException => logAndRenderError(404, Error(NOT_FOUND, "No user with given id found."), n)
+    case h: HeaderMissingException => halt(status = 403, Error(Error.HEADER_MISSING, h.getMessage))
+    case p: ParameterMissingException => halt(status = 400, Error(Error.PARAMETER_MISSING, p.getMessage))
+    case n: NoSuchUserException => logAndRenderError(404, Error(Error.NOT_FOUND, "No user with given id found."), n)
     case t: Throwable => logAndRenderError(500, Error.GenericError, t)
   }
 
-  private def logAndRenderError(statusCode: Int, error: Error, exception: Throwable): Unit = {
+  private def logAndRenderError(statusCode: Int, error: no.ndla.auth.model.Error, exception: Throwable): Unit = {
     logger.error(error.toString, exception)
     halt(status = statusCode, body = error)
   }
 
   get("/me", operation(infoAboutMe)) {
     Option(request.getHeader("X-Consumer-Username")) match {
-      case Some(user) => Users.getNdlaUser(user.replace(AuthProperties.KONG_USERNAME_PREFIX, ""))
-      case None => halt(status = 404, body = Error(NOT_FOUND, s"No username found in request"))
+      case Some(user) => usersRepository.getNdlaUser(user.replace(AuthProperties.KongUsernamePrefix, ""))
+      case None => halt(status = 404, body = Error(Error.NOT_FOUND, s"No username found in request"))
     }
   }
 
   get("/logout", operation(logout)) {
-    checkRequiredHeaderParameters(request, "X-Consumer-ID", "app-key") match {
-      case Success(_) =>
-      case Failure(ex) => halt(400, Error(AUTHENTICATION, s"Missing parameter ${ex.getMessage}"))
-    }
-
-    val consumerId = request.getHeader("X-Consumer-ID")
-    val appkey = request.getHeader("app-key")
-
-    KongApi.deleteKeyForConsumer(appkey, consumerId)
+    kongService.deleteKeyForConsumer(requireHeader("X-Consumer-ID"), requireHeader("app-key"))
     halt(status = 204)
   }
 
   get("/login/google", operation(loginGoogle)) {
     val successUrl = WhiteListedUrls.getSuccessUrl(params.get("successUrl"))
     val failureUrl = WhiteListedUrls.getFailureUrl(params.get("failureUrl"))
-    redirect(GoogleAuthService.getRedirectUri(successUrl, failureUrl))
+    redirect(googleAuthService.getRedirectUri(successUrl, failureUrl))
   }
 
   get("/login/google/verify", operation(verifyGoogle)) {
-    val (successUrl, failureUrl) = StateService.getRedirectUrls(params("state"))
+    val stateParam = requireParam("state")
+    val codeParam = requireParam("code")
+    val (successUrl, failureUrl) = stateRepository.getRedirectUrls(stateParam)
 
     if (params.isDefinedAt("error")) {
       val errorMessage = s"Authentication failure from Google: ${params("error")}"
-      logAudit(errorMessage)
+      logger.warn(errorMessage)
       halt(status = 302, headers = Map("Location" -> failureUrl))
     }
 
-    checkRequiredParameters(params, GoogleAuthService.requiredParameters: _*) match {
-      case Success(_) =>
-      case Failure(ex) => halt(400, Error(AUTHENTICATION, s"Missing parameter ${ex.getMessage}"))
-    }
-
-    val user: NdlaUser = GoogleAuthService.getOrCreateNdlaUser(params("code"), params("state"))
-    val kongKey: KongKey = KongApi.getOrCreateKeyAndConsumer(user.id)
+    val user: NdlaUser = googleAuthService.getOrCreateNdlaUser(codeParam, stateParam)
+    val kongKey: KongKey = kongService.getOrCreateKeyAndConsumer(user.id)
 
     halt(status = 302, headers = Map("app-key" -> kongKey.key, "Location" -> successUrl.replace("{appkey}", kongKey.key)))
-
   }
 
   get("/login/facebook", operation(loginFacebook)) {
     val successUrl = WhiteListedUrls.getSuccessUrl(params.get("successUrl"))
     val failureUrl = WhiteListedUrls.getFailureUrl(params.get("failureUrl"))
-    redirect(FacebookAuthService.getRedirect(successUrl, failureUrl))
+    redirect(facebookAuthService.getRedirect(successUrl, failureUrl))
   }
 
   get("/login/facebook/verify", operation(verifyFacebook)) {
-    val (successUrl, failureUrl) = StateService.getRedirectUrls(params("state"))
+    val stateParam = requireParam("state")
+    val codeParam = requireParam("code")
+    val (successUrl, failureUrl) = stateRepository.getRedirectUrls(stateParam)
 
     if (params.contains("error")) {
       val error = params.get("error")
@@ -193,48 +186,50 @@ class AuthController(implicit val swagger: Swagger) extends ScalatraServlet with
            |Error reason: '${error_reason.getOrElse("")}'
                                 """.stripMargin
 
-      logAudit(errorMessage)
+      logger.warn(errorMessage)
       halt(status = 302, headers = Map("Location" -> failureUrl))
     }
 
-    checkRequiredParameters(params, "code", "state") match {
-      case Success(_) =>
-      case Failure(ex) => halt(400, Error(AUTHENTICATION, s"Missing parameter ${ex.getMessage}"))
-    }
-
-    val user: NdlaUser = FacebookAuthService.getOrCreateNdlaUser(params("code"), params("state"))
-    val kongKey: KongKey = KongApi.getOrCreateKeyAndConsumer(user.id)
+    val user: NdlaUser = facebookAuthService.getOrCreateNdlaUser(codeParam, stateParam)
+    val kongKey: KongKey = kongService.getOrCreateKeyAndConsumer(user.id)
 
     halt(status = 302, headers = Map("app-key" -> kongKey.key, "Location" -> successUrl.replace("{appkey}", kongKey.key)))
   }
 
   get("/login/twitter", operation(loginTwitter)) {
-    redirect(TwitterAuthService.getRedirectUri)
+    redirect(twitterAuthService.getRedirectUri)
   }
 
   get("/login/twitter/verify", operation(verifyTwitter)) {
     if (params.contains("denied")) {
       val errorMessage = "Authentication failure from Twitter. User denied."
-      logAudit(errorMessage)
+      logger.warn(errorMessage)
       halt(403, errorMessage)
     }
 
-    checkRequiredParameters(params, "oauth_token", "oauth_verifier") match {
-      case Success(_) =>
-      case Failure(ex) => halt(400, Error(AUTHENTICATION, s"Missing parameter ${ex.getMessage}"))
-    }
-
-    val user: NdlaUser = TwitterAuthService.getOrCreateNdlaUser(params("oauth_token"), params("oauth_verifier"))
-    val kongKey: KongKey = KongApi.getOrCreateKeyAndConsumer(user.id)
+    val user: NdlaUser = twitterAuthService.getOrCreateNdlaUser(requireParam("oauth_token"), requireParam("oauth_verifier"))
+    val kongKey: KongKey = kongService.getOrCreateKeyAndConsumer(user.id)
 
     Ok(body = user, Map("apikey" -> kongKey.key))
   }
 
-  def checkRequiredParameters(actualParameters: Params, requiredParameters: String*): Try[Unit] = {
-    Try(requiredParameters.foreach(parameter => require(actualParameters.get(parameter).map(_.trim.nonEmpty).isDefined, s"Required parameter '$parameter' is missing or empty.")))
+  def requireHeader(headerName: String)(implicit request: HttpServletRequest): String = {
+    request.header(headerName) match {
+      case Some(value) => value
+      case None => {
+        logger.warn(s"Request made to ${request.getRequestURI} without required header $headerName.")
+        throw new HeaderMissingException(s"The required header $headerName is missing.")
+      }
+    }
   }
 
-  def checkRequiredHeaderParameters(request: HttpServletRequest, requiredParameters: String*):Try[Unit] = {
-    Try(requiredParameters.foreach(parameter => require(Option(request.getHeader(parameter)).map(_.trim.nonEmpty).isDefined, s"Required header-parameter '$parameter' is missing or empty.")))
+  def requireParam(paramName: String)(implicit request: HttpServletRequest): String = {
+    params.get(paramName) match {
+      case Some(value) => value
+      case None => {
+        logger.warn(s"Request made to ${request.getRequestURI} without required parameter $paramName")
+        throw new ParameterMissingException(s"The required parameter $paramName is missing")
+      }
+    }
   }
 }
