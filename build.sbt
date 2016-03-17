@@ -43,7 +43,8 @@ lazy val auth = (project in file(".")).
             "org.eclipse.jetty" % "jetty-webapp" % "9.2.10.v20150310" % "container;compile",
             "com.github.scribejava" % "scribejava-apis" % "2.1.0",
             "org.scalatest" % "scalatest_2.11" % ScalaTestVersion % "test",
-            "org.mockito" % "mockito-all" % MockitoVersion % "test"
+            "org.mockito" % "mockito-all" % MockitoVersion % "test",
+            "com.netaporter" %% "scala-uri" % "0.4.13"
         )
     ).enablePlugins(DockerPlugin).enablePlugins(GitVersioning).enablePlugins(JettyPlugin)
 

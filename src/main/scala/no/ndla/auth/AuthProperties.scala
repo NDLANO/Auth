@@ -11,7 +11,9 @@ object AuthProperties extends LazyLogging {
   val whiteListedSuccessUrls = get("WHITELISTED_SUCCESSURLS")
   val whiteListedFailureUrls = get("WHITELISTED_FAILUREURLS")
 
-  val KONG_USERNAME_PREFIX = "ndla-"
+  val kongHostName = get("KONG_HOSTNAME")
+  val kongAdminPort = get("KONG_ADMIN_PORT")
+  val kongUsernamePrefix = "ndla-"
 
   def verify() = {
     val missingProperties = properties.filter(entry => entry._2.isEmpty).toList
@@ -23,7 +25,7 @@ object AuthProperties extends LazyLogging {
     }
   }
 
-  def get(envKey: String): String = {
+  private def get(envKey: String): String = {
     properties.get(envKey) match {
       case Some(value) => value.get
       case None => throw new NoSuchFieldError(s"Missing environment variable $envKey")
@@ -36,8 +38,7 @@ object AuthProperties extends LazyLogging {
     }
   }
 
-  def getInt(envKey: String): Integer = {
+  private def getInt(envKey: String): Integer = {
     get(envKey).toInt
   }
-
 }

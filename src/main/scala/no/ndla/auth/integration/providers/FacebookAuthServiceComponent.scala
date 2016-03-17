@@ -1,10 +1,10 @@
 package no.ndla.auth.integration.providers
 
 import no.ndla.auth._
-import no.ndla.auth.integration._
 import no.ndla.auth.exception.AccessTokenVerificationException
 import no.ndla.auth.repository.{UsersRepositoryComponent, StateRepositoryComponent}
 import no.ndla.auth.model.{EnvironmentVariable, FacebookAccessToken, FacebookUser, NdlaUser}
+import com.netaporter.uri.dsl._
 import org.json4s._
 import org.json4s.native.JsonMethods._
 
@@ -42,7 +42,7 @@ trait FacebookAuthServiceComponent {
             val requiredParameters = List(CLIENT_ID, RESPONSE_TYPE, SCOPE, REDIRECT_URI).map(_.key)
             val state = stateRepository.createState(successUrl, failureUrl).toString
             val parameters = environment.filterKeys(requiredParameters.contains(_)) + (STATE -> state)
-            environment(LOGIN_URL.key) + "?" + toQueryStringFormat(parameters)
+            environment(LOGIN_URL.key).addParams(parameters.toList)
         }
 
         def getOrCreateNdlaUser(code: String, state: String): NdlaUser = {
@@ -57,7 +57,7 @@ trait FacebookAuthServiceComponent {
 
             val requiredParameters = List(CLIENT_ID, CLIENT_SECRET, REDIRECT_URI).map(_.key)
             val parameters = environment.filterKeys(requiredParameters.contains(_)) + (CODE -> code)
-            val url = environment(ACCESS_TOKEN_VERIFICATION_URL.key) + "?" + toQueryStringFormat(parameters)
+            val url = environment(ACCESS_TOKEN_VERIFICATION_URL.key).addParams(parameters.toList)
 
             val response: HttpResponse[String] = scalaj.http.Http(url).asString
 

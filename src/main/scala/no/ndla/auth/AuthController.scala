@@ -3,7 +3,6 @@ package no.ndla.auth
 import javax.servlet.http.HttpServletRequest
 
 import com.typesafe.scalalogging.{LazyLogging, StrictLogging}
-import no.ndla.auth.AuditLogger.logAudit
 import no.ndla.auth.exception.{NoSuchUserException, ParameterMissingException, HeaderMissingException}
 import no.ndla.auth.model.{Error, KongKey, NdlaUser}
 import org.scalatra.{Params, ScalatraServlet, Ok}
@@ -129,7 +128,7 @@ class AuthController(implicit val swagger: Swagger) extends ScalatraServlet with
 
   get("/me", operation(infoAboutMe)) {
     Option(request.getHeader("X-Consumer-Username")) match {
-      case Some(user) => usersRepository.getNdlaUser(user.replace(AuthProperties.KONG_USERNAME_PREFIX, ""))
+      case Some(user) => usersRepository.getNdlaUser(user.replace(AuthProperties.kongUsernamePrefix, ""))
       case None => halt(status = 404, body = Error(Error.NOT_FOUND, s"No username found in request"))
     }
   }
@@ -146,13 +145,13 @@ class AuthController(implicit val swagger: Swagger) extends ScalatraServlet with
   }
 
   get("/login/google/verify", operation(verifyGoogle)) {
-    val stateParam = requireParam("state", params)
-    val codeParam = requireParam("code", params)
+    val stateParam = requireParam("state")
+    val codeParam = requireParam("code")
     val (successUrl, failureUrl) = stateRepository.getRedirectUrls(stateParam)
 
     if (params.isDefinedAt("error")) {
       val errorMessage = s"Authentication failure from Google: ${params("error")}"
-      logAudit(errorMessage)
+      logger.warn(errorMessage)
       halt(status = 302, headers = Map("Location" -> failureUrl))
     }
 
@@ -169,8 +168,8 @@ class AuthController(implicit val swagger: Swagger) extends ScalatraServlet with
   }
 
   get("/login/facebook/verify", operation(verifyFacebook)) {
-    val stateParam = requireParam("state", params)
-    val codeParam = requireParam("code", params)
+    val stateParam = requireParam("state")
+    val codeParam = requireParam("code")
     val (successUrl, failureUrl) = stateRepository.getRedirectUrls(stateParam)
 
     if (params.contains("error")) {
@@ -187,7 +186,7 @@ class AuthController(implicit val swagger: Swagger) extends ScalatraServlet with
            |Error reason: '${error_reason.getOrElse("")}'
                                 """.stripMargin
 
-      logAudit(errorMessage)
+      logger.warn(errorMessage)
       halt(status = 302, headers = Map("Location" -> failureUrl))
     }
 
@@ -204,11 +203,11 @@ class AuthController(implicit val swagger: Swagger) extends ScalatraServlet with
   get("/login/twitter/verify", operation(verifyTwitter)) {
     if (params.contains("denied")) {
       val errorMessage = "Authentication failure from Twitter. User denied."
-      logAudit(errorMessage)
+      logger.warn(errorMessage)
       halt(403, errorMessage)
     }
 
-    val user: NdlaUser = twitterAuthService.getOrCreateNdlaUser(requireParam("oauth_token", params), requireParam("oauth_verifier", params))
+    val user: NdlaUser = twitterAuthService.getOrCreateNdlaUser(requireParam("oauth_token"), requireParam("oauth_verifier"))
     val kongKey: KongKey = kongService.getOrCreateKeyAndConsumer(user.id)
 
     Ok(body = user, Map("apikey" -> kongKey.key))
@@ -224,7 +223,7 @@ class AuthController(implicit val swagger: Swagger) extends ScalatraServlet with
     }
   }
 
-  def requireParam(paramName: String, params: Params)(implicit request: HttpServletRequest): String = {
+  def requireParam(paramName: String)(implicit request: HttpServletRequest): String = {
     params.get(paramName) match {
       case Some(value) => value
       case None => {

@@ -13,17 +13,14 @@ trait KongServiceComponent {
 
   class KongService extends LazyLogging {
 
-    val KONG_HOSTNAME = AuthProperties.get("KONG_HOSTNAME")
-    // In etc hosts when linking containers.
-    val KONG_ADMIN_PORT = AuthProperties.get("KONG_ADMIN_PORT")
-    val KONG_BASE_URL = s"http://$KONG_HOSTNAME:$KONG_ADMIN_PORT/consumers"
+    val kongBaseUrl = s"http://${AuthProperties.kongHostName}:${AuthProperties.kongAdminPort}/consumers"
 
     implicit val formats = DefaultFormats // Brings in default date formats etc.
 
     def deleteKeyForConsumer(appkey: String, consumerId: String): Unit = {
       getKeys(consumerId).find(_.key == appkey) match {
         case Some(key) => {
-          val deleteKey: HttpResponse[String] = Http(s"$KONG_BASE_URL/$consumerId/key-auth/${key.id}").method("DELETE").asString
+          val deleteKey: HttpResponse[String] = Http(s"$kongBaseUrl/$consumerId/key-auth/${key.id}").method("DELETE").asString
           if (deleteKey.isError) throw new RuntimeException(s"Could not log out consumer. Got error ${deleteKey.code}")
         }
         case None =>
@@ -32,7 +29,7 @@ trait KongServiceComponent {
 
     def getOrCreateKeyAndConsumer(username: String): KongKey = {
       // We can not use a valid uuid as username because of kong api /consumers/{username or id} where is uuid. So we prefix it
-      val usernameWithPrefix = AuthProperties.KONG_USERNAME_PREFIX + username
+      val usernameWithPrefix = AuthProperties.kongUsernamePrefix + username
 
       createConsumerIfNotExists(usernameWithPrefix)
       val keys: List[KongKey] = getKeys(usernameWithPrefix)
@@ -44,7 +41,7 @@ trait KongServiceComponent {
     }
 
     private def createConsumerIfNotExists(username: String): Unit = {
-      val getConsumer: HttpResponse[String] = Http(s"$KONG_BASE_URL/$username").asString
+      val getConsumer: HttpResponse[String] = Http(s"$kongBaseUrl/$username").asString
       if (getConsumer.isCodeInRange(404, 404)) {
         createConsumer(username)
         return
@@ -54,7 +51,7 @@ trait KongServiceComponent {
     }
 
     private def createConsumer(id: String): Unit = {
-      val response: HttpResponse[String] = Http(s"$KONG_BASE_URL/").postForm(Seq(
+      val response: HttpResponse[String] = Http(s"$kongBaseUrl/").postForm(Seq(
         "username" -> id
       )).asString
 
@@ -64,7 +61,7 @@ trait KongServiceComponent {
     }
 
     private def createKey(id: String): KongKey = {
-      val response: HttpResponse[String] = Http(s"$KONG_BASE_URL/$id/key-auth").method("POST").asString
+      val response: HttpResponse[String] = Http(s"$kongBaseUrl/$id/key-auth").method("POST").asString
 
       if (response.isError) {
         throw new RuntimeException("Unable to create key: " + response.body)
@@ -73,7 +70,7 @@ trait KongServiceComponent {
     }
 
     private def getKeys(username: String): List[KongKey] = {
-      val response: HttpResponse[String] = Http(s"$KONG_BASE_URL/$username/key-auth/").asString
+      val response: HttpResponse[String] = Http(s"$kongBaseUrl/$username/key-auth/").asString
       parse(response.body).extract[KongKeys].data
     }
   }
