@@ -13,7 +13,7 @@ trait KongServiceComponent {
 
   class KongService extends LazyLogging {
 
-    val kongBaseUrl = s"http://${AuthProperties.kongHostName}:${AuthProperties.kongAdminPort}/consumers"
+    val kongBaseUrl = s"http://${AuthProperties.KongHostName}:${AuthProperties.KongAdminPort}/consumers"
 
     implicit val formats = DefaultFormats // Brings in default date formats etc.
 
@@ -29,7 +29,7 @@ trait KongServiceComponent {
 
     def getOrCreateKeyAndConsumer(username: String): KongKey = {
       // We can not use a valid uuid as username because of kong api /consumers/{username or id} where is uuid. So we prefix it
-      val usernameWithPrefix = AuthProperties.kongUsernamePrefix + username
+      val usernameWithPrefix = AuthProperties.KongUsernamePrefix + username
 
       createConsumerIfNotExists(usernameWithPrefix)
       val keys: List[KongKey] = getKeys(usernameWithPrefix)

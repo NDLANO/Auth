@@ -128,7 +128,7 @@ class AuthController(implicit val swagger: Swagger) extends ScalatraServlet with
 
   get("/me", operation(infoAboutMe)) {
     Option(request.getHeader("X-Consumer-Username")) match {
-      case Some(user) => usersRepository.getNdlaUser(user.replace(AuthProperties.kongUsernamePrefix, ""))
+      case Some(user) => usersRepository.getNdlaUser(user.replace(AuthProperties.KongUsernamePrefix, ""))
       case None => halt(status = 404, body = Error(Error.NOT_FOUND, s"No username found in request"))
     }
   }
