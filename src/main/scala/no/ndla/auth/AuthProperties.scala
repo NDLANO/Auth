@@ -11,8 +11,8 @@ object AuthProperties extends LazyLogging {
   val whiteListedSuccessUrls = get("WHITELISTED_SUCCESSURLS")
   val whiteListedFailureUrls = get("WHITELISTED_FAILUREURLS")
 
-  val kongHostName = get("KONG_HOSTNAME")
   val kongAdminPort = get("KONG_ADMIN_PORT")
+  val kongHostName = "kong"
   val kongUsernamePrefix = "ndla-"
 
   def verify() = {
