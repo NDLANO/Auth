@@ -1,16 +1,16 @@
-CREATE KEYSPACE accounts WITH replication = {'class': 'SimpleStrategy', 'replication_factor': '1'}  AND durable_writes = true;
+CREATE SCHEMA auth;
 
-CREATE TABLE IF NOT EXISTS accounts.facebook_users (
-  id text PRIMARY KEY, 
+CREATE TABLE IF NOT EXISTS auth.facebook_users (
+  id text PRIMARY KEY,
   ndla_id text,
   first_name text,
   middle_name text,
   last_name text,
   email text,
-  created timeuuid
+  created timestamp
 );
 
-CREATE TABLE IF NOT EXISTS accounts.twitter_users (
+CREATE TABLE IF NOT EXISTS auth.twitter_users (
   id text PRIMARY KEY,
   ndla_id text,
   name text,
@@ -18,10 +18,10 @@ CREATE TABLE IF NOT EXISTS accounts.twitter_users (
   middle_name text,
   last_name text,
   email text,
-  created timeuuid
+  created timestamp
 );
 
-CREATE TABLE IF NOT EXISTS accounts.google_users (
+CREATE TABLE IF NOT EXISTS auth.google_users (
   id text PRIMARY KEY,
   ndla_id text,
   first_name text,
@@ -32,22 +32,22 @@ CREATE TABLE IF NOT EXISTS accounts.google_users (
   object_type text,
   email text,
   verified boolean,
-  created timeuuid
+  created timestamp
 );
 
-CREATE TABLE IF NOT EXISTS accounts.ndla_users (
-  id text PRIMARY KEY,
+CREATE TABLE IF NOT EXISTS auth.ndla_users (
+  id uuid PRIMARY KEY,
   first_name text,
   middle_name text,
   last_name text,
   email text,
-  created timeuuid,
+  created timestamp,
   facebook_id text,
-  google_id text, 
+  google_id text,
   twitter_id text
 );
 
-CREATE TABLE IF NOT EXISTS accounts.state (
+CREATE TABLE IF NOT EXISTS auth.state (
   id uuid PRIMARY KEY,
   success text,
   failure text

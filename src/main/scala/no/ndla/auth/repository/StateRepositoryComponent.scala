@@ -1,30 +1,20 @@
 package no.ndla.auth.repository
 
 import java.util.UUID
-import java.util.concurrent.TimeUnit
 
-import com.datastax.driver.core.utils.UUIDs
-import com.datastax.driver.core.{PreparedStatement, ResultSet, Row}
-import no.ndla.auth.database.Cassandra
 import no.ndla.auth.exception.IllegalStateFormatException
+import no.ndla.auth.integration.DataSourceComponent
+import scalikejdbc._
 import scala.util.{Failure, Success, Try}
 
 
 trait StateRepositoryComponent {
-    this: Cassandra =>
+    this: DataSourceComponent =>
     val stateRepository: StateRepository
 
     class StateRepository {
 
-        val stateTimeToLiveInSeconds = TimeUnit.MINUTES.toSeconds(10)
-
-        // Inserts a new state UUID in the database. The user must complete the login process withing the number of seconds specified in valid_in_seconds.
-        val CREATE_STATE: PreparedStatement = cassandraSession.prepare(s"INSERT INTO state (id, success, failure) VALUES (?, ?, ?) USING TTL $stateTimeToLiveInSeconds")
-
-        val GET_REDIRECT_URLS: PreparedStatement = cassandraSession.prepare("SELECT success, failure from state where ID = ?")
-
-        // Verifies that the state exists and deletes it so that it cat not be reused.
-        val CHECK_AND_DELETE_STATE: PreparedStatement = cassandraSession.prepare(s"DELETE FROM state where ID = ? IF EXISTS")
+        ConnectionPool.singleton(new DataSourceConnectionPool(dataSource))
 
         /**
           * Creates a new state variable in the database.
@@ -32,14 +22,28 @@ trait StateRepositoryComponent {
           * @return the new state as a UUID
           */
         def createState(successUrl: String, failureUrl: String): UUID = {
-            val uuid = UUIDs.random()
-            cassandraSession.execute(CREATE_STATE.bind(uuid, successUrl, failureUrl))
+            val uuid = UUID.randomUUID()
+            using(ConnectionPool.borrow()) { conn: java.sql.Connection =>
+                val pst = conn.prepareStatement("INSERT INTO state (id, success, failure) VALUES (?, ?, ?)")
+                pst.setObject(1, uuid)
+                pst.setString(2, successUrl)
+                pst.setString(3, failureUrl)
+                pst.executeUpdate()
+            }
             uuid
         }
 
         def getRedirectUrls(uuid: String): (String, String) = {
-            val row: Row = cassandraSession.execute(GET_REDIRECT_URLS.bind(asUuid(uuid))).one()
-            (row.getString("success"), row.getString("failure"))
+            val rs = using(ConnectionPool.borrow()) { conn: java.sql.Connection =>
+                val pst = conn.prepareStatement("SELECT success, failure FROM state WHERE id = ?")
+                pst.setObject(1, UUID.fromString(uuid))
+                pst.executeQuery()
+            }
+
+            rs.next() match {
+                case false => ("", "") // No rows were retrieved
+                case true => (rs.getString("success"), rs.getString("failure"))
+            }
         }
 
         /**
@@ -55,8 +59,12 @@ trait StateRepositoryComponent {
         }
 
         def isStateValid(uuid: UUID): Boolean = {
-            val resultSet: ResultSet = cassandraSession.execute(CHECK_AND_DELETE_STATE.bind(uuid))
-            resultSet.wasApplied()
+            using(ConnectionPool.borrow()) { conn: java.sql.Connection =>
+                val pst = conn.prepareStatement("DELETE FROM state WHERE id = ?")
+                pst.setObject(1, uuid)
+                pst.executeUpdate() // "returns either (1) the row count for SQL Data Manipulation Language (DML) statements
+                // or (2) 0 for SQL statements that return nothing"
+            } == 1
         }
 
         private def asUuid(uuid: String): UUID = {
