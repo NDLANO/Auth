@@ -17,6 +17,7 @@ trait UsersRepositoryComponent {
   val usersRepository: UsersRepository
 
   class UsersRepository {
+    val FindNdlaUser = cassandraSession.prepare("select * from ndla_users where id = ?")
 
     def getOrCreateNdlaUser(user: ExternalUser): NdlaUser = {
       val ndlaUserId: Option[String] = user.userType match {
@@ -45,7 +46,7 @@ trait UsersRepositoryComponent {
     }
 
     def getNdlaUser(ndlaUserId: String): NdlaUser = {
-      val resultSet: ResultSet = cassandraSession.execute(s"select * from ndla_users where id = '$ndlaUserId';")
+      val resultSet: ResultSet = cassandraSession.execute(FindNdlaUser.bind(ndlaUserId))
       Option(resultSet.one()) match {
         case Some(row) => NdlaUser(ndlaUserId, Option(row.getString("first_name")), Option(row.getString("middle_name")), Option(row.getString("last_name")), Option(row.getString("email")), new DateTime(UUIDs.unixTimestamp(row.getUUID("created"))))
         case None => throw new NoSuchUserException(s"No user with id $ndlaUserId found")

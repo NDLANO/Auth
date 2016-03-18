@@ -35,12 +35,15 @@ class UsersRepositoryTest extends UnitSuite with TestEnvironment with PrivateMet
     when(row.getString("middle_name")).thenReturn("TestMiddleName")
     when(row.getString("last_name")).thenReturn("TestLastName")
     when(row.getString("email")).thenReturn("TestName@host.com")
-
     when(row.getUUID("created")).thenReturn(UUID.fromString("5299e153-e601-19e5-96fe-e32a75c0b2b5"))
 
     val resultSet = mock[ResultSet]
-    when(cassandraSession.execute(any[String])).thenReturn(resultSet)
     when(resultSet.one()).thenReturn(row)
+
+    val findNdlaUser = mock[PreparedStatement]
+    when(findNdlaUser.bind(anyVararg())).thenReturn(mock[BoundStatement])
+    when(cassandraSession.prepare(any[String])).thenReturn(findNdlaUser)
+    when(cassandraSession.execute(any[BoundStatement])).thenReturn(resultSet)
 
     val testUser = users.getNdlaUser("0123456789")
 
@@ -54,7 +57,11 @@ class UsersRepositoryTest extends UnitSuite with TestEnvironment with PrivateMet
   test("That getNdlaUser throws a NoSuchUserException if the user does not exist") {
     val resultSet = mock[ResultSet]
     when(resultSet.one()).thenReturn(null)
-    when(cassandraSession.execute(any[String])).thenReturn(resultSet)
+
+    val findNdlaUser = mock[PreparedStatement]
+    when(findNdlaUser.bind(anyVararg())).thenReturn(mock[BoundStatement])
+    when(cassandraSession.prepare(any[String])).thenReturn(findNdlaUser)
+    when(cassandraSession.execute(any[BoundStatement])).thenReturn(resultSet)
 
     intercept[NoSuchUserException] {
       users.getNdlaUser("0123456789")
@@ -70,8 +77,12 @@ class UsersRepositoryTest extends UnitSuite with TestEnvironment with PrivateMet
     when(row.getUUID("created")).thenReturn(UUID.fromString("5299e153-e601-19e5-96fe-e32a75c0b2b5"))
 
     val resultSet = mock[ResultSet]
-    when(cassandraSession.execute(any[String])).thenReturn(resultSet)
     when(resultSet.one()).thenReturn(row)
+
+    val findNdlaUser = mock[PreparedStatement]
+    when(findNdlaUser.bind(anyVararg())).thenReturn(mock[BoundStatement])
+    when(cassandraSession.prepare(any[String])).thenReturn(findNdlaUser)
+    when(cassandraSession.execute(any[BoundStatement])).thenReturn(resultSet)
 
     val testUser = users.getNdlaUserName("0123456789")
 
@@ -83,7 +94,11 @@ class UsersRepositoryTest extends UnitSuite with TestEnvironment with PrivateMet
   test("That getNdlaUserName throws a NoSuchUserException if the user does not exist") {
     val resultSet = mock[ResultSet]
     when(resultSet.one()).thenReturn(null)
-    when(cassandraSession.execute(any[String])).thenReturn(resultSet)
+
+    val findNdlaUser = mock[PreparedStatement]
+    when(findNdlaUser.bind(anyVararg())).thenReturn(mock[BoundStatement])
+    when(cassandraSession.prepare(any[String])).thenReturn(findNdlaUser)
+    when(cassandraSession.execute(any[BoundStatement])).thenReturn(resultSet)
 
     intercept[NoSuchUserException] {
       users.getNdlaUserName("0123456789")
