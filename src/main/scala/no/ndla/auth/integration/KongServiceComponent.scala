@@ -17,7 +17,7 @@ trait KongServiceComponent {
 
     implicit val formats = DefaultFormats // Brings in default date formats etc.
 
-    def deleteKeyForConsumer(appkey: String, consumerId: String): Unit = {
+    def deleteKeyForConsumer(consumerId: String, appkey: String): Unit = {
       getKeys(consumerId).find(_.key == appkey) match {
         case Some(key) => {
           val deleteKey: HttpResponse[String] = Http(s"$kongBaseUrl/$consumerId/key-auth/${key.id}").method("DELETE").asString
