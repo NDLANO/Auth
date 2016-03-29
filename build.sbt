@@ -45,7 +45,9 @@ lazy val auth = (project in file(".")).
             "org.mockito" % "mockito-all" % MockitoVersion % "test",
             "com.netaporter" %% "scala-uri" % "0.4.13",
             "org.scalikejdbc" %% "scalikejdbc" % "2.2.8",
-            "org.postgresql" % "postgresql" % "9.4-1201-jdbc4"
+            "org.scalikejdbc" %% "scalikejdbc-test"   % "2.2.8"   % "test",
+            "org.postgresql" % "postgresql" % "9.4-1201-jdbc4",
+            "com.h2database"  %  "h2"                % "1.4.191"
         )
     ).enablePlugins(DockerPlugin).enablePlugins(GitVersioning).enablePlugins(JettyPlugin)
 

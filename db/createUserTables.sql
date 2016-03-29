@@ -50,5 +50,6 @@ CREATE TABLE IF NOT EXISTS auth.ndla_users (
 CREATE TABLE IF NOT EXISTS auth.state (
   id uuid PRIMARY KEY,
   success text,
-  failure text
+  failure text,
+  created timestamp NOT NULL DEFAULT NOW()
 );

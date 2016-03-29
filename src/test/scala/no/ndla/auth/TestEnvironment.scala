@@ -2,8 +2,8 @@ package no.ndla.auth
 
 import no.ndla.auth.integration.{DataSourceComponent, KongServiceComponent}
 import no.ndla.auth.repository.{StateRepositoryComponent, UsersRepositoryComponent}
-import no.ndla.auth.integration.providers.{TwitterAuthServiceComponent, GoogleAuthServiceComponent, FacebookAuthServiceComponent}
-import org.postgresql.ds.PGPoolingDataSource
+import no.ndla.auth.integration.providers.{FacebookAuthServiceComponent, GoogleAuthServiceComponent, TwitterAuthServiceComponent}
+import org.h2.jdbcx.JdbcConnectionPool
 import org.scalatest.mock.MockitoSugar
 
 trait TestEnvironment
@@ -16,7 +16,7 @@ trait TestEnvironment
     with KongServiceComponent
     with MockitoSugar
 {
-  val dataSource = mock[PGPoolingDataSource]
+  val dataSource = JdbcConnectionPool.create("jdbc:h2:mem:test", "sa", "sa")
   val usersRepository = mock[UsersRepository]
   val stateRepository = mock[StateRepository]
   val facebookAuthService = mock[FacebookAuthService]

@@ -2,6 +2,7 @@ package no.ndla.auth.repository
 
 import java.util.{Calendar, UUID}
 import java.sql.Timestamp
+
 import no.ndla.auth.exception.NoSuchUserException
 import no.ndla.auth.integration.DataSourceComponent
 import no.ndla.auth.model._
@@ -31,32 +32,30 @@ trait UsersRepositoryComponent {
       }
     }
 
-    private def createNdlaUser(externalUser: ExternalUser): String = {
+    private def createNdlaUser(user: ExternalUser): String = {
       val ndla_user_id: UUID = UUID.randomUUID()
+      val colName = SQLSyntax.createUnsafely(user.userType.toString)
 
-      using(ConnectionPool.borrow()) { conn: java.sql.Connection =>
-        val pst = conn.prepareStatement(s"INSERT INTO ndla_users(id, first_name, middle_name, last_name, email, ${externalUser.userType}_id, created) VALUES (?, ?, ?, ?, ?, ?, ?)")
-        pst.setObject(1, ndla_user_id)
-        pst.setString(2, externalUser.first_name.orNull)
-        pst.setString(3, externalUser.middle_name.orNull)
-        pst.setString(4, externalUser.last_name.orNull)
-        pst.setString(5, externalUser.email.orNull)
-        pst.setString(6, externalUser.id)
-        pst.setTimestamp(7, new Timestamp(Calendar.getInstance().getTime().getTime()))
-        pst.executeUpdate()
+      DB localTx { implicit session =>
+        sql"""INSERT INTO ndla_users (id, first_name, middle_name, last_name, email, ${colName}_id, created)
+              VALUES ($ndla_user_id, ${user.first_name.orNull}, ${user.middle_name.orNull}, ${user.last_name.orNull},
+              ${user.email.orNull}, ${user.id}, ${new Timestamp(Calendar.getInstance().getTime().getTime())})""".update().apply()
+        sql"UPDATE ${colName}_users SET ndla_id = $ndla_user_id".update.apply()
       }
+
       ndla_user_id.toString
     }
 
+    private def mapNdlaUser(rs: WrappedResultSet, ndlaUserId: String): NdlaUser = {
+      NdlaUser(ndlaUserId, Option(rs.string("first_name")), Option(rs.string("middle_name")), Option(rs.string("last_name")), Option(rs.string("email")), new DateTime(rs.timestamp("created")))
+    }
+
     def getNdlaUser(ndlaUserId: String): NdlaUser = {
-      val resultSet = using(ConnectionPool.borrow()) { conn: java.sql.Connection =>
-        val pst = conn.prepareStatement("SELECT * FROM ndla_users WHERE id = ?")
-        pst.setObject(1, UUID.fromString(ndlaUserId))
-        pst.executeQuery()
-      }
-      resultSet.next() match {
-        case false => throw new NoSuchUserException(s"No user with id $ndlaUserId found")
-        case true =>NdlaUser(ndlaUserId, Option(resultSet.getString("first_name")), Option(resultSet.getString("middle_name")), Option(resultSet.getString("last_name")), Option(resultSet.getString("email")), new DateTime(resultSet.getTimestamp("created")))
+      DB readOnly { implicit session =>
+        sql"SELECT * from ndla_users WHERE id = ${UUID.fromString(ndlaUserId)}".map(rs => mapNdlaUser(rs, ndlaUserId)).single.apply()
+      } match {
+        case Some(user) => user
+        case _ => throw new NoSuchUserException(s"No user with id $ndlaUserId found")
       }
     }
 
@@ -65,115 +64,50 @@ trait UsersRepositoryComponent {
       NdlaUserName(ndlaUser.first_name, ndlaUser.middle_name, ndlaUser.last_name)
     }
 
-    private def findOrCreateUser(facebookUser: FacebookUser): Option[String] = {
-      val resultSet = using(ConnectionPool.borrow()) { conn: java.sql.Connection =>
-        // Denne spørringen opretter en ny row dersom det ikke finnes en rad med id=facebookUser.id, og returnerer ndla_id kolonnen for denne nye raden (null).
-        // Hvis en rad med id = facebookUser.id allerede finnes returneres ndla_id for denne raden (uten å manipulere raden, eller lagge til en ny rad)
-        val query = "WITH s AS ( " +
-          "SELECT * FROM facebook_users WHERE id = ? " +
-          "), i AS ( " +
-          "INSERT INTO facebook_users (id, first_name, middle_name, last_name, created, email) " +
-          "SELECT ?, ?, ?, ?, ?, ? " +
-          "WHERE NOT EXISTS (SELECT * FROM facebook_users WHERE id = ?) " +
-          "RETURNING * " +
-          ") " +
-          "SELECT ndla_id FROM i " +
-          "UNION ALL " +
-          "SELECT ndla_id FROM s ";
+    private def findOrCreateUser(user: FacebookUser): Option[String] = {
+      DB localTx { implicit session =>
+        val ndla_id = sql"SELECT ndla_id FROM facebook_users WHERE id = ${user.id}".map { rs => rs.string("ndla_id") }.single.apply()
 
-        val pst = conn.prepareStatement(query)
-        pst.setString(1, facebookUser.id)
-        pst.setString(2, facebookUser.id)
-        pst.setString(3, facebookUser.first_name.orNull)
-        pst.setString(4, facebookUser.middle_name.orNull)
-        pst.setString(5, facebookUser.last_name.orNull)
-        pst.setTimestamp(6, new Timestamp(Calendar.getInstance().getTime().getTime()))
-        pst.setString(7, facebookUser.email.orNull)
-        pst.setString(8, facebookUser.id)
-
-        pst.executeQuery()
-      }
-      resultSet.next()
-
-      resultSet.getString("ndla_id") match {
-        case null => None // New user
-        case value => Option(value)
+        ndla_id match {
+          case Some(value) => Option(value)
+          case None => {
+            sql"""INSERT INTO facebook_users (id, first_name, middle_name, last_name, created, email)
+                    VALUES (${user.id}, ${user.first_name}, ${user.middle_name}, ${user.last_name}, ${new Timestamp(Calendar.getInstance.getTime.getTime())}, ${user.email})"""
+            None
+          }
+        }
       }
     }
 
-    private def findOrCreateUser(twitterUser: TwitterUser): Option[String] = {
-      val resultSet = using(ConnectionPool.borrow()) { conn: java.sql.Connection =>
-        // Denne spørringen opretter en ny row dersom det ikke finnes en rad med id=facebookUser.id, og returnerer ndla_id kolonnen for denne nye raden (null).
-        // Hvis en rad med id = facebookUser.id allerede finnes returneres ndla_id for denne raden (uten å manipulere raden, eller lagge til en ny rad)
-        val query = "WITH s AS ( " +
-          "SELECT * FROM twitter_users WHERE id = ? " +
-          "), i AS ( " +
-          "INSERT INTO twitter_users (id, first_name, middle_name, last_name, created, email) " +
-          "SELECT ?, ?, ?, ?, ?, ? " +
-          "WHERE NOT EXISTS (SELECT * FROM twitter_users WHERE id = ?) " +
-          "RETURNING * " +
-          ") " +
-          "SELECT ndla_id FROM i " +
-          "UNION ALL " +
-          "SELECT ndla_id FROM s ";
+    private def findOrCreateUser(user: TwitterUser): Option[String] = {
+      DB localTx { implicit session =>
+        val ndla_id = sql"SELECT ndla_id FROM twitter_users WHERE id = ${user.id}".map { rs => rs.string("ndla_id") }.single.apply()
 
-        val pst = conn.prepareStatement(query)
-        pst.setString(1, twitterUser.id)
-        pst.setString(2, twitterUser.id)
-        pst.setString(3, twitterUser.first_name.orNull)
-        pst.setString(4, twitterUser.middle_name.orNull)
-        pst.setString(5, twitterUser.last_name.orNull)
-        pst.setTimestamp(6, new Timestamp(Calendar.getInstance().getTime().getTime()))
-        pst.setString(7, twitterUser.email.orNull)
-        pst.setString(8, twitterUser.id)
-
-        pst.executeQuery()
-      }
-      resultSet.next()
-
-      resultSet.getString("ndla_id") match {
-        case null => None // New user
-        case value => Option(value)
+        ndla_id match {
+          case Some(value) => Option(value)
+          case None => {
+            sql"""INSERT INTO twitter_users (id, first_name, middle_name, last_name, created, email)
+                    VALUES (${user.id}, ${user.first_name}, ${user.middle_name}, ${user.last_name}, ${new Timestamp(Calendar.getInstance.getTime.getTime())}, ${user.email})"""
+            None
+          }
+        }
       }
     }
 
-    private def findOrCreateUser(googleUser: GoogleUser): Option[String] = {
-      val resultSet = using(ConnectionPool.borrow()) { conn: java.sql.Connection =>
-        // Denne spørringen opretter en ny row dersom det ikke finnes en rad med id=facebookUser.id, og returnerer ndla_id kolonnen for denne nye raden (null).
-        // Hvis en rad med id = facebookUser.id allerede finnes returneres ndla_id for denne raden (uten å manipulere raden, eller lagge til en ny rad)
-        val query = "WITH s AS ( " +
-          "SELECT * FROM google_users WHERE id = ? " +
-          "), i AS ( " +
-          "INSERT INTO google_users (id, first_name, middle_name, last_name, display_name, etag, object_type, verified, email, created) " +
-          "SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?" +
-          "WHERE NOT EXISTS (SELECT * FROM google_users WHERE id = ?) " +
-          "RETURNING * " +
-          ") " +
-          "SELECT ndla_id FROM i " +
-          "UNION ALL " +
-          "SELECT ndla_id FROM s ";
+    private def findOrCreateUser(user: GoogleUser): Option[String] = {
+      DB localTx { implicit session =>
+        val ndla_id = sql"SELECT ndla_id FROM google_users WHERE id = ${user.id}".map { rs => rs.string("ndla_id") }.single.apply()
 
-        val pst = conn.prepareStatement(query)
-        pst.setString(1, googleUser.id)
-        pst.setString(2, googleUser.id)
-        pst.setString(3, googleUser.name.flatMap(_.givenName).orNull)
-        pst.setString(4, googleUser.name.flatMap(_.middleName).orNull)
-        pst.setString(5, googleUser.name.flatMap(_.familyName).orNull)
-        pst.setString(6, googleUser.displayName.orNull)
-        pst.setString(7, googleUser.etag.orNull)
-        pst.setString(8, googleUser.objectType.orNull)
-        pst.setBoolean(9, Option(true).map(_.asInstanceOf[java.lang.Boolean]).orNull)
-        pst.setString(10, googleUser.email.orNull)
-        pst.setTimestamp(11, new Timestamp(Calendar.getInstance().getTime().getTime()))
-        pst.setString(12, googleUser.id)
-
-        pst.executeQuery()
-      }
-      resultSet.next()
-
-      resultSet.getString("ndla_id") match {
-        case null => None // New user
-        case value => Option(value)
+        ndla_id match {
+          case Some(value) => Option(value)
+          case None => {
+            sql"""INSERT INTO google_users (id, first_name, middle_name, last_name, display_name, etag, object_type, email, created)
+                    VALUES (${user.id}, ${user.name.flatMap(_.givenName).orNull}, ${user.name.flatMap(_.middleName).orNull},
+                    ${user.name.flatMap(_.familyName).orNull}, ${user.displayName.orNull}, ${user.etag.orNull}, ${user.objectType.orNull}, ${user.email.orNull},
+                    ${new Timestamp(Calendar.getInstance.getTime.getTime())})"""
+            None
+          }
+        }
       }
     }
   }
