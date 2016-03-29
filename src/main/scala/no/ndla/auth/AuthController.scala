@@ -209,20 +209,25 @@ class AuthController(implicit val swagger: Swagger) extends ScalatraServlet with
   }
 
   get("/login/twitter", operation(loginTwitter)) {
-    redirect(twitterAuthService.getRedirectUri)
+    val successUrl = WhiteListedUrls.getSuccessUrl(params.get("successUrl"))
+    val failureUrl = WhiteListedUrls.getFailureUrl(params.get("failureUrl"))
+    redirect(twitterAuthService.getRedirectUri(successUrl, failureUrl))
   }
 
   get("/login/twitter/verify", operation(verifyTwitter)) {
+    val stateParam = requireParam("state")
+    val (successUrl, failureUrl) = stateRepository.getRedirectUrls(stateParam)
+
     if (params.contains("denied")) {
       val errorMessage = "Authentication failure from Twitter. User denied."
       logger.warn(errorMessage)
-      halt(403, errorMessage)
+      halt(status = 302, headers = Map("Location" -> failureUrl))
     }
 
     val user: NdlaUser = twitterAuthService.getOrCreateNdlaUser(requireParam("oauth_token"), requireParam("oauth_verifier"))
     val kongKey: KongKey = kongService.getOrCreateKeyAndConsumer(user.id)
 
-    Ok(body = user, Map("apikey" -> kongKey.key))
+    halt(status = 302, headers = Map("app-key" -> kongKey.key, "Location" -> successUrl.replace("{appkey}", kongKey.key)))
   }
 
   def requireHeader(headerName: String)(implicit request: HttpServletRequest): String = {
