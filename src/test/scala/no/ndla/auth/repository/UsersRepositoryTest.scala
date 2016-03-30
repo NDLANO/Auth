@@ -1,66 +1,14 @@
 package no.ndla.auth.repository
 
-import scalikejdbc._
 import no.ndla.auth.exception.NoSuchUserException
 import no.ndla.auth.model._
 import no.ndla.auth.{TestEnvironment, UnitSuite}
 import org.scalatest.PrivateMethodTester
-import scalikejdbc.DB
+import scalikejdbc.{DB, _}
 
 class UsersRepositoryTest extends UnitSuite with TestEnvironment with PrivateMethodTester {
 
   val users = new UsersRepository
-
-  override def beforeAll() {
-    DB localTx { implicit session =>
-      sql"CREATE SCHEMA IF NOT EXISTS auth".update.apply()
-      sql"SET SCHEMA auth".update.apply()
-
-      sql"""CREATE TABLE IF NOT EXISTS auth.ndla_users (
-            id uuid PRIMARY KEY,
-            first_name text,
-            middle_name text,
-            last_name text,
-            email text,
-            created timestamp,
-            facebook_id text,
-            google_id text,
-            twitter_id text)""".update.apply()
-
-      sql"""CREATE TABLE IF NOT EXISTS auth.twitter_users (
-        id VARCHAR(255) PRIMARY KEY,
-        ndla_id text,
-        name text,
-        first_name text,
-        middle_name text,
-        last_name text,
-        email text,
-        created timestamp)""".update.apply()
-
-      sql"""CREATE TABLE IF NOT EXISTS auth.google_users (
-            id VARCHAR(255) PRIMARY KEY,
-            ndla_id text,
-            first_name text,
-            middle_name text,
-            last_name text,
-            display_name text,
-            etag text,
-            object_type text,
-            email text,
-            verified boolean,
-            created timestamp)""".update.apply()
-
-      sql"""CREATE TABLE IF NOT EXISTS auth.facebook_users (
-            id VARCHAR(255) PRIMARY KEY,
-            ndla_id text,
-            first_name text,
-            middle_name text,
-            last_name text,
-            email text,
-            created timestamp
-            )""".update.apply()
-    }
-  }
 
   test("That createNdlaUser returns an ndla user id") {
     val createNdlaUser = PrivateMethod[String]('createNdlaUser)

@@ -10,20 +10,6 @@ class StateRepositoryTest extends UnitSuite with TestEnvironment {
 
   val state = new StateRepository
 
-  override def beforeAll() {
-    DB localTx { implicit session =>
-      sql"CREATE SCHEMA auth".update.apply()
-      sql"SET SCHEMA auth".update.apply()
-
-      sql"""CREATE TABLE IF NOT EXISTS auth.state (
-      id uuid PRIMARY KEY,
-      success text,
-      failure text,
-      created timestamp NOT NULL DEFAULT NOW()
-      )""".update.apply()
-    }
-  }
-
   test("That createState returns a new uuid") {
     assertResult(true) {
       state.createState("", "").isInstanceOf[UUID]

@@ -72,7 +72,7 @@ trait UsersRepositoryComponent {
           case Some(value) => Option(value)
           case None => {
             sql"""INSERT INTO facebook_users (id, first_name, middle_name, last_name, created, email)
-                    VALUES (${user.id}, ${user.first_name}, ${user.middle_name}, ${user.last_name}, ${new Timestamp(Calendar.getInstance.getTime.getTime())}, ${user.email})"""
+                    VALUES (${user.id}, ${user.first_name}, ${user.middle_name}, ${user.last_name}, ${new Timestamp(Calendar.getInstance.getTime.getTime())}, ${user.email})""".update().apply()
             None
           }
         }
@@ -87,7 +87,7 @@ trait UsersRepositoryComponent {
           case Some(value) => Option(value)
           case None => {
             sql"""INSERT INTO twitter_users (id, first_name, middle_name, last_name, created, email)
-                    VALUES (${user.id}, ${user.first_name}, ${user.middle_name}, ${user.last_name}, ${new Timestamp(Calendar.getInstance.getTime.getTime())}, ${user.email})"""
+                    VALUES (${user.id}, ${user.first_name}, ${user.middle_name}, ${user.last_name}, ${new Timestamp(Calendar.getInstance.getTime.getTime())}, ${user.email})""".update().apply()
             None
           }
         }
@@ -104,7 +104,7 @@ trait UsersRepositoryComponent {
             sql"""INSERT INTO google_users (id, first_name, middle_name, last_name, display_name, etag, object_type, email, created)
                     VALUES (${user.id}, ${user.name.flatMap(_.givenName).orNull}, ${user.name.flatMap(_.middleName).orNull},
                     ${user.name.flatMap(_.familyName).orNull}, ${user.displayName.orNull}, ${user.etag.orNull}, ${user.objectType.orNull}, ${user.email.orNull},
-                    ${new Timestamp(Calendar.getInstance.getTime.getTime())})"""
+                    ${new Timestamp(Calendar.getInstance.getTime.getTime())})""".update().apply()
             None
           }
         }

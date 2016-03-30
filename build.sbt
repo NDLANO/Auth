@@ -47,7 +47,8 @@ lazy val auth = (project in file(".")).
             "org.scalikejdbc" %% "scalikejdbc" % "2.2.8",
             "org.scalikejdbc" %% "scalikejdbc-test"   % "2.2.8"   % "test",
             "org.postgresql" % "postgresql" % "9.4-1201-jdbc4",
-            "com.h2database"  %  "h2"                % "1.4.191"
+            "com.h2database"  %  "h2" % "1.4.191",
+            "org.flywaydb" % "flyway-core" % "4.0"
         )
     ).enablePlugins(DockerPlugin).enablePlugins(GitVersioning).enablePlugins(JettyPlugin)
 
