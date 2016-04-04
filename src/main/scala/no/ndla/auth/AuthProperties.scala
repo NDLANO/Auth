@@ -15,6 +15,15 @@ object AuthProperties extends LazyLogging {
   val KongHostName = "kong"
   val KongUsernamePrefix = "ndla-"
 
+  var MetaUserName = "auth_write"
+  var MetaPassword = get("DB_PASSWORD")
+  var MetaResource = get("DB_RESOURCE")
+  var MetaServer = get("DB_SERVER")
+  var MetaPort = 5432
+  var MetaSchema = get("DB_SCHEMA")
+  var MetaInitialConnections = 3
+  var MetaMaxConnections = 20
+
   def verify() = {
     val missingProperties = Properties.filter(entry => entry._2.isEmpty).toList
     if (missingProperties.nonEmpty) {

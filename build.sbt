@@ -39,12 +39,16 @@ lazy val auth = (project in file(".")).
             "org.json4s" %% "json4s-ext" % Json4sVersion,
             "org.scalatra" %% "scalatra-json" % Scalatraversion,
             "org.scalatra" %% "scalatra-swagger"  % Scalatraversion,
-            "com.datastax.cassandra" % "cassandra-driver-core" % "2.1.8",
             "org.eclipse.jetty" % "jetty-webapp" % "9.2.10.v20150310" % "container;compile",
             "com.github.scribejava" % "scribejava-apis" % "2.1.0",
             "org.scalatest" % "scalatest_2.11" % ScalaTestVersion % "test",
             "org.mockito" % "mockito-all" % MockitoVersion % "test",
-            "com.netaporter" %% "scala-uri" % "0.4.13"
+            "com.netaporter" %% "scala-uri" % "0.4.13",
+            "org.scalikejdbc" %% "scalikejdbc" % "2.2.8",
+            "org.scalikejdbc" %% "scalikejdbc-test"   % "2.2.8"   % "test",
+            "org.postgresql" % "postgresql" % "9.4-1201-jdbc4",
+            "com.h2database"  %  "h2" % "1.4.191",
+            "org.flywaydb" % "flyway-core" % "4.0"
         )
     ).enablePlugins(DockerPlugin).enablePlugins(GitVersioning).enablePlugins(JettyPlugin)
 
@@ -98,3 +102,5 @@ resolvers ++= Seq(
 )
 
 credentials += Credentials("Sonatype Nexus Repository Manager", "nexus.knowit.no", "ndla", "ndla")
+
+parallelExecution in Test := false

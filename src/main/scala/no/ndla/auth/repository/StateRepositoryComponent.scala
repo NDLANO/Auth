@@ -1,69 +1,78 @@
 package no.ndla.auth.repository
 
+import java.time.Instant
 import java.util.UUID
 import java.util.concurrent.TimeUnit
 
-import com.datastax.driver.core.utils.UUIDs
-import com.datastax.driver.core.{PreparedStatement, ResultSet, Row}
-import no.ndla.auth.database.Cassandra
 import no.ndla.auth.exception.IllegalStateFormatException
+import no.ndla.auth.integration.DataSourceComponent
+import scalikejdbc._
+
 import scala.util.{Failure, Success, Try}
 
 
 trait StateRepositoryComponent {
-    this: Cassandra =>
-    val stateRepository: StateRepository
+  this: DataSourceComponent =>
+  val stateRepository: StateRepository
 
-    class StateRepository {
+  class StateRepository {
+    ConnectionPool.singleton(new DataSourceConnectionPool(dataSource))
+    val stateTimeToLiveInSeconds = TimeUnit.MINUTES.toSeconds(10)
 
-        val stateTimeToLiveInSeconds = TimeUnit.MINUTES.toSeconds(10)
-
-        // Inserts a new state UUID in the database. The user must complete the login process withing the number of seconds specified in valid_in_seconds.
-        val CREATE_STATE: PreparedStatement = cassandraSession.prepare(s"INSERT INTO state (id, success, failure) VALUES (?, ?, ?) USING TTL $stateTimeToLiveInSeconds")
-
-        val GET_REDIRECT_URLS: PreparedStatement = cassandraSession.prepare("SELECT success, failure from state where ID = ?")
-
-        // Verifies that the state exists and deletes it so that it cat not be reused.
-        val CHECK_AND_DELETE_STATE: PreparedStatement = cassandraSession.prepare(s"DELETE FROM state where ID = ? IF EXISTS")
-
-        /**
-          * Creates a new state variable in the database.
-          *
-          * @return the new state as a UUID
-          */
-        def createState(successUrl: String, failureUrl: String): UUID = {
-            val uuid = UUIDs.random()
-            cassandraSession.execute(CREATE_STATE.bind(uuid, successUrl, failureUrl))
-            uuid
-        }
-
-        def getRedirectUrls(uuid: String): (String, String) = {
-            val row: Row = cassandraSession.execute(GET_REDIRECT_URLS.bind(asUuid(uuid))).one()
-            (row.getString("success"), row.getString("failure"))
-        }
-
-        /**
-          * Check that the given string is a valid state that exists in the database.
-          * If the state is valid, true is returned. If the state does not exist, false is returned.
-          * If the state is in an invalid format, an exception is returned.
-          *
-          * @param uuid the uuid
-          * @return
-          */
-        def isStateValid(uuid: String): Boolean = {
-            isStateValid(asUuid(uuid))
-        }
-
-        def isStateValid(uuid: UUID): Boolean = {
-            val resultSet: ResultSet = cassandraSession.execute(CHECK_AND_DELETE_STATE.bind(uuid))
-            resultSet.wasApplied()
-        }
-
-        private def asUuid(uuid: String): UUID = {
-            Try(UUID.fromString(uuid)) match {
-                case Success(validUUID) => validUUID
-                case Failure(ex) => throw new IllegalStateFormatException("Invalid state", ex)
-            }
-        }
+    /**
+      * Creates a new state variable in the database.
+      *
+      * @return the new state as a UUID
+      */
+    def createState(successUrl: String, failureUrl: String): UUID = {
+      val uuid = UUID.randomUUID()
+      DB localTx { implicit session =>
+        sql"INSERT INTO state (id, success, failure) VALUES ($uuid, $successUrl, $failureUrl)".update().apply()
+      }
+      uuid
     }
+
+    def getRedirectUrls(uuid: String): (String, String) = {
+      DB readOnly { implicit session =>
+        sql"SELECT success AS s, failure AS f FROM state WHERE id = ${UUID.fromString(uuid)}".map(rs => {
+          (rs.string("s"), rs.string("f"))
+        }).single().apply() match {
+          case Some(value) => value
+          case None => ("", "")
+        }
+      }
+    }
+
+    /**
+      * Check that the given string is a valid state that exists in the database.
+      * If the state is valid, true is returned. If the state does not exist, false is returned.
+      * If the state is in an invalid format, an exception is returned.
+      *
+      * @param uuid the uuid
+      * @return
+      */
+    def isStateValid(uuid: String): Boolean = {
+      isStateValid(asUuid(uuid))
+    }
+
+    def isStateValid(uuid: UUID): Boolean = {
+      DB localTx { implicit session =>
+        val created = sql"SELECT created from state where id = $uuid".map(rs => rs.timestamp("created")).single().apply()
+        sql"DELETE FROM state WHERE id = ${uuid}".update().apply()
+
+        created match {
+          case None => false
+          case Some(time) => time.getTime() + stateTimeToLiveInSeconds > Instant.now().getEpochSecond();
+        }
+      }
+    }
+
+    private def asUuid(uuid: String): UUID = {
+      Try(UUID.fromString(uuid)) match {
+        case Success(validUUID) => validUUID
+        case Failure(ex) => throw new IllegalStateFormatException("Invalid state", ex)
+      }
+    }
+  }
+
 }

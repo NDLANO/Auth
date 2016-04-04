@@ -1,23 +1,22 @@
 package no.ndla.auth.repository
 
-import java.util.UUID
+import java.util.{Calendar, UUID}
+import java.sql.Timestamp
 
-import com.datastax.driver.core._
-import com.datastax.driver.core.querybuilder.QueryBuilder
-import com.datastax.driver.core.utils.UUIDs
-import no.ndla.auth.database.Cassandra
 import no.ndla.auth.exception.NoSuchUserException
+import no.ndla.auth.integration.DataSourceComponent
 import no.ndla.auth.model._
 import no.ndla.auth.model
 import org.joda.time.DateTime
+import scalikejdbc._
 
 
 trait UsersRepositoryComponent {
-  this: Cassandra =>
+  this: DataSourceComponent =>
   val usersRepository: UsersRepository
 
   class UsersRepository {
-    val FindNdlaUser = cassandraSession.prepare("select * from ndla_users where id = ?")
+    ConnectionPool.singleton(new DataSourceConnectionPool(dataSource))
 
     def getOrCreateNdlaUser(user: ExternalUser): NdlaUser = {
       val ndlaUserId: Option[String] = user.userType match {
@@ -33,23 +32,33 @@ trait UsersRepositoryComponent {
       }
     }
 
-    private def createNdlaUser(externalUser: ExternalUser): String = {
-      val ndla_user_id: String = UUID.randomUUID().toString
+    private def createNdlaUser(user: ExternalUser): String = {
+      val ndla_user_id: UUID = UUID.randomUUID()
+      // Av sikkerhetshensyn er det ikke lov å bruke SQLInterpolation direkte i en SQL-spørring for å spesifisere kolonnenavn.
+      // I vårt tilfelle er ikke dette et problem fordi user.userType ikke er bruker-input, men en enum (no.ndla.auth.model.UserType).
+      // createUnsafely er en måte å unngå denne restriksjonen på.
+      val colName = SQLSyntax.createUnsafely(user.userType.toString)
 
-      val insertNdlaUser: PreparedStatement = cassandraSession.prepare(s"INSERT INTO ndla_users(id, first_name, middle_name, last_name, email, ${externalUser.userType}_id, created) VALUES (?, ?, ?, ?, ?, ?, ?)")
-      val updateExternalUserWithNdlaUserId: Statement = QueryBuilder.update(externalUser.userType + "_users").`with`(QueryBuilder.set("ndla_id", ndla_user_id)).where(QueryBuilder.eq("id", externalUser.id))
-      val batchStatement: BatchStatement = new BatchStatement()
-      batchStatement.add(insertNdlaUser.bind(ndla_user_id, externalUser.first_name.orNull, null, externalUser.last_name.orNull, externalUser.email.orNull, externalUser.id, UUIDs.timeBased()))
-      batchStatement.add(updateExternalUserWithNdlaUserId)
-      cassandraSession.execute(batchStatement)
-      ndla_user_id
+      DB localTx { implicit session =>
+        sql"""INSERT INTO ndla_users (id, first_name, middle_name, last_name, email, ${colName}_id, created)
+              VALUES ($ndla_user_id, ${user.first_name.orNull}, ${user.middle_name.orNull}, ${user.last_name.orNull},
+              ${user.email.orNull}, ${user.id}, ${new Timestamp(Calendar.getInstance().getTime().getTime())})""".update().apply()
+        sql"UPDATE ${colName}_users SET ndla_id = $ndla_user_id".update.apply()
+      }
+
+      ndla_user_id.toString
+    }
+
+    private def mapNdlaUser(rs: WrappedResultSet, ndlaUserId: String): NdlaUser = {
+      NdlaUser(ndlaUserId, Option(rs.string("first_name")), Option(rs.string("middle_name")), Option(rs.string("last_name")), Option(rs.string("email")), new DateTime(rs.timestamp("created")))
     }
 
     def getNdlaUser(ndlaUserId: String): NdlaUser = {
-      val resultSet: ResultSet = cassandraSession.execute(FindNdlaUser.bind(ndlaUserId))
-      Option(resultSet.one()) match {
-        case Some(row) => NdlaUser(ndlaUserId, Option(row.getString("first_name")), Option(row.getString("middle_name")), Option(row.getString("last_name")), Option(row.getString("email")), new DateTime(UUIDs.unixTimestamp(row.getUUID("created"))))
-        case None => throw new NoSuchUserException(s"No user with id $ndlaUserId found")
+      DB readOnly { implicit session =>
+        sql"SELECT * from ndla_users WHERE id = ${UUID.fromString(ndlaUserId)}".map(rs => mapNdlaUser(rs, ndlaUserId)).single.apply()
+      } match {
+        case Some(user) => user
+        case _ => throw new NoSuchUserException(s"No user with id $ndlaUserId found")
       }
     }
 
@@ -58,48 +67,50 @@ trait UsersRepositoryComponent {
       NdlaUserName(ndlaUser.first_name, ndlaUser.middle_name, ndlaUser.last_name)
     }
 
-    private def findOrCreateUser(facebookUser: FacebookUser): Option[String] = {
-      val insertUserIntoFacebookTable: PreparedStatement = cassandraSession.prepare(s"INSERT INTO facebook_users (id, first_name, middle_name, last_name, created, email) " +
-        s"VALUES (?, ?, ?, ?, ?, ?) IF NOT EXISTS  ;")
-      val boundStatement: BoundStatement = insertUserIntoFacebookTable.bind(facebookUser.id, facebookUser.first_name.orNull, facebookUser.middle_name.orNull, facebookUser.last_name.orNull, UUIDs.timeBased(), facebookUser.email.orNull)
-      val result = cassandraSession.execute(boundStatement)
+    private def findOrCreateUser(user: FacebookUser): Option[String] = {
+      DB localTx { implicit session =>
+        val ndla_id = sql"SELECT ndla_id FROM facebook_users WHERE id = ${user.id}".map { rs => rs.string("ndla_id") }.single.apply()
 
-      result.wasApplied() match {
-        case true => None // New user
-        case false => Option(result.one().getString("ndla_id"))
+        ndla_id match {
+          case Some(value) => Option(value)
+          case None => {
+            sql"""INSERT INTO facebook_users (id, first_name, middle_name, last_name, created, email)
+                    VALUES (${user.id}, ${user.first_name}, ${user.middle_name}, ${user.last_name}, ${new Timestamp(Calendar.getInstance.getTime.getTime())}, ${user.email})""".update().apply()
+            None
+          }
+        }
       }
     }
 
-    private def findOrCreateUser(twitterUser: TwitterUser): Option[String] = {
-      val insertUserIntoFacebookTable: PreparedStatement = cassandraSession.prepare(s"INSERT INTO twitter_users (id, name, first_name, middle_name, last_name, created, email) " +
-        s"VALUES (?, ?, ?, ?, ?, ?, ?) IF NOT EXISTS  ;")
-      val boundStatement: BoundStatement = insertUserIntoFacebookTable.bind(twitterUser.id, twitterUser.name.orNull, twitterUser.first_name.orNull, twitterUser.middle_name.orNull, twitterUser.last_name.orNull, UUIDs.timeBased(), twitterUser.email.orNull)
-      val result = cassandraSession.execute(boundStatement)
+    private def findOrCreateUser(user: TwitterUser): Option[String] = {
+      DB localTx { implicit session =>
+        val ndla_id = sql"SELECT ndla_id FROM twitter_users WHERE id = ${user.id}".map { rs => rs.string("ndla_id") }.single.apply()
 
-      result.wasApplied() match {
-        case true => None // New user
-        case false => Option(result.one().getString("ndla_id"))
+        ndla_id match {
+          case Some(value) => Option(value)
+          case None => {
+            sql"""INSERT INTO twitter_users (id, first_name, middle_name, last_name, created, email)
+                    VALUES (${user.id}, ${user.first_name}, ${user.middle_name}, ${user.last_name}, ${new Timestamp(Calendar.getInstance.getTime.getTime())}, ${user.email})""".update().apply()
+            None
+          }
+        }
       }
     }
 
-    private def findOrCreateUser(googleUser: GoogleUser): Option[String] = {
-      val insertUserIntoTable: PreparedStatement = cassandraSession.prepare(s"INSERT INTO google_users (id, first_name, middle_name, last_name, display_name, etag, object_type, verified, email, created) VALUES ( ?, ?, ?, ?, ?, ?,?, ?, ?, ?) IF NOT EXISTS  ;")
-      val boundStatement: BoundStatement = insertUserIntoTable.bind(
-        googleUser.id,
-        googleUser.name.flatMap(_.givenName).orNull,
-        googleUser.name.flatMap(_.middleName).orNull,
-        googleUser.name.flatMap(_.familyName).orNull,
-        googleUser.displayName.orNull,
-        googleUser.etag.orNull,
-        googleUser.objectType.orNull,
-        Option(true).map(_.asInstanceOf[java.lang.Boolean]).orNull,
-        googleUser.email.orNull,
-        UUIDs.timeBased())
-      val result = cassandraSession.execute(boundStatement)
+    private def findOrCreateUser(user: GoogleUser): Option[String] = {
+      DB localTx { implicit session =>
+        val ndla_id = sql"SELECT ndla_id FROM google_users WHERE id = ${user.id}".map { rs => rs.string("ndla_id") }.single.apply()
 
-      result.wasApplied() match {
-        case true => None // New user
-        case false => Option(result.one().getString("ndla_id"))
+        ndla_id match {
+          case Some(value) => Option(value)
+          case None => {
+            sql"""INSERT INTO google_users (id, first_name, middle_name, last_name, display_name, etag, object_type, email, created)
+                    VALUES (${user.id}, ${user.name.flatMap(_.givenName).orNull}, ${user.name.flatMap(_.middleName).orNull},
+                    ${user.name.flatMap(_.familyName).orNull}, ${user.displayName.orNull}, ${user.etag.orNull}, ${user.objectType.orNull}, ${user.email.orNull},
+                    ${new Timestamp(Calendar.getInstance.getTime.getTime())})""".update().apply()
+            None
+          }
+        }
       }
     }
   }

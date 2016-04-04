@@ -1,31 +1,42 @@
 package no.ndla.auth.repository
 
 import java.util.UUID
-import com.datastax.driver.core._
+
+import scalikejdbc._
 import no.ndla.auth.exception.IllegalStateFormatException
 import no.ndla.auth.{TestEnvironment, UnitSuite}
-import org.mockito.Mockito._
-import org.mockito.Matchers._
-
 
 class StateRepositoryTest extends UnitSuite with TestEnvironment {
 
-  var state: StateRepository = _
+  val state = new StateRepository
 
-  override def beforeEach() = {
-    val CHECK_AND_DELETE_STATE = mock[PreparedStatement]
-    when(cassandraSession.prepare(any[String])).thenReturn(CHECK_AND_DELETE_STATE)
-    when(CHECK_AND_DELETE_STATE.bind(any[String])).thenReturn(any[BoundStatement])
+  test("That createState returns a new uuid") {
+    assertResult(true) {
+      state.createState("", "").isInstanceOf[UUID]
+    }
+  }
 
-    state = new StateRepository
+  test("That getRedirectUrls returns two empty Strings if no redirect urls was found") {
+    val (success, fail) = state.getRedirectUrls("0f5ba406-59af-437a-a856-9430f2a3ad78")
+    assert(success == "" && fail == "")
+  }
+
+  test("That getRedirectUrls returns a successUrl and a failUrl if the state was found") {
+    val (id, successUrl, failureUrl) = ("0f5ba406-59af-437a-a856-9430f2a3ad79", "success", "failure")
+    DB localTx { implicit session =>
+      sql"INSERT INTO state (id, success, failure) values ($id, $successUrl, $failureUrl)".update.apply()
+    }
+    val (success, failure) = state.getRedirectUrls("0f5ba406-59af-437a-a856-9430f2a3ad79")
+    assert(success == successUrl)
+    assert(failure == failureUrl)
   }
 
   test("That isStateValid returns true for a valid state") {
     val testUuid = UUID.fromString("0f5ba406-59af-437a-a856-9430f2a3ad78")
-    val result: ResultSet = mock[ResultSet]
 
-    when(result.wasApplied()).thenReturn(true)
-    when(cassandraSession.execute(any[BoundStatement])).thenReturn(result)
+    DB localTx { implicit session =>
+      sql"INSERT INTO state (id, success, failure) values (${testUuid.toString()}, 'asdf', 'fdsa')".update.apply()
+    }
 
     assertResult(true) {
       state.isStateValid(testUuid.toString())
@@ -34,16 +45,12 @@ class StateRepositoryTest extends UnitSuite with TestEnvironment {
 
   test("That isStateValid returns false for an invalid state") {
     val testUuid = UUID.fromString("0f5ba406-59af-437a-a856-9430f2a3ad78")
-    val result: ResultSet = mock[ResultSet]
-    when(result.wasApplied()).thenReturn(false)
-    when(cassandraSession.execute(any[BoundStatement])).thenReturn(result)
-
     assertResult(false) {
       state.isStateValid(testUuid.toString())
     }
   }
 
-  test ("That isStateValid throws an exception if stat is in an invalid format") {
+  test("That isStateValid throws an exception if stat is in an invalid format") {
     intercept[IllegalStateFormatException] {
       state.isStateValid("This is an invalid format")
     }
