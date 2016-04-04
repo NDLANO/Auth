@@ -34,6 +34,9 @@ trait UsersRepositoryComponent {
 
     private def createNdlaUser(user: ExternalUser): String = {
       val ndla_user_id: UUID = UUID.randomUUID()
+      // Av sikkerhetshensyn er det ikke lov å bruke SQLInterpolation direkte i en SQL-spørring for å spesifisere kolonnenavn.
+      // I vårt tilfelle er ikke dette et problem fordi user.userType ikke er bruker-input, men en enum (no.ndla.auth.model.UserType).
+      // createUnsafely er en måte å unngå denne restriksjonen på.
       val colName = SQLSyntax.createUnsafely(user.userType.toString)
 
       DB localTx { implicit session =>
