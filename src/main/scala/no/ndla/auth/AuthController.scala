@@ -146,6 +146,7 @@ class AuthController(implicit val swagger: Swagger) extends ScalatraServlet with
   }
 
   get("/logout", operation(logout)) {
+    requireHeader("X-Consumer-Username")
     kongService.deleteKeyForConsumer(requireHeader("X-Consumer-ID"), requireHeader("app-key"))
     halt(status = 204)
   }
