@@ -43,7 +43,7 @@ trait UsersRepositoryComponent {
         sql"""INSERT INTO ndla_users (id, first_name, middle_name, last_name, email, ${colName}_id, created)
               VALUES ($ndla_user_id, ${user.first_name.orNull}, ${user.middle_name.orNull}, ${user.last_name.orNull},
               ${user.email.orNull}, ${user.id}, ${new Timestamp(Calendar.getInstance().getTime().getTime())})""".update().apply()
-        sql"UPDATE ${colName}_users SET ndla_id = $ndla_user_id".update.apply()
+        sql"UPDATE ${colName}_users SET ndla_id = $ndla_user_id WHERE id = ${user.id}".update.apply()
       }
 
       ndla_user_id.toString
