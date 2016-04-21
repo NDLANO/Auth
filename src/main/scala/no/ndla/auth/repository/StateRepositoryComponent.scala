@@ -1,6 +1,5 @@
 package no.ndla.auth.repository
 
-import java.time.Instant
 import java.util.UUID
 import java.util.concurrent.TimeUnit
 
@@ -62,7 +61,7 @@ trait StateRepositoryComponent {
 
         created match {
           case None => false
-          case Some(time) => time.getTime() + stateTimeToLiveInSeconds > Instant.now().getEpochSecond();
+          case Some(time) => time.getTime() + stateTimeToLiveInSeconds > (System.currentTimeMillis() / 1000);
         }
       }
     }
