@@ -159,7 +159,6 @@ class AuthController(implicit val swagger: Swagger) extends ScalatraServlet with
 
   get("/login/google/verify", operation(verifyGoogle)) {
     val stateParam = requireParam("state")
-    val codeParam = requireParam("code")
     val (successUrl, failureUrl) = stateRepository.getRedirectUrls(stateParam)
 
     if (params.isDefinedAt("error")) {
@@ -168,7 +167,7 @@ class AuthController(implicit val swagger: Swagger) extends ScalatraServlet with
       halt(status = 302, headers = Map("Location" -> failureUrl))
     }
 
-    val user: NdlaUser = googleAuthService.getOrCreateNdlaUser(codeParam, stateParam)
+    val user: NdlaUser = googleAuthService.getOrCreateNdlaUser(requireParam("code"), stateParam)
     val kongKey: KongKey = kongService.getOrCreateKeyAndConsumer(user.id)
 
     halt(status = 302, headers = Map("app-key" -> kongKey.key, "Location" -> successUrl.replace("{appkey}", kongKey.key)))
@@ -182,7 +181,6 @@ class AuthController(implicit val swagger: Swagger) extends ScalatraServlet with
 
   get("/login/facebook/verify", operation(verifyFacebook)) {
     val stateParam = requireParam("state")
-    val codeParam = requireParam("code")
     val (successUrl, failureUrl) = stateRepository.getRedirectUrls(stateParam)
 
     if (params.contains("error")) {
@@ -203,7 +201,7 @@ class AuthController(implicit val swagger: Swagger) extends ScalatraServlet with
       halt(status = 302, headers = Map("Location" -> failureUrl))
     }
 
-    val user: NdlaUser = facebookAuthService.getOrCreateNdlaUser(codeParam, stateParam)
+    val user: NdlaUser = facebookAuthService.getOrCreateNdlaUser(requireParam("code"), stateParam)
     val kongKey: KongKey = kongService.getOrCreateKeyAndConsumer(user.id)
 
     halt(status = 302, headers = Map("app-key" -> kongKey.key, "Location" -> successUrl.replace("{appkey}", kongKey.key)))
