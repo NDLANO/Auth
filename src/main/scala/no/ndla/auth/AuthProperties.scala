@@ -12,7 +12,7 @@ object AuthProperties extends LazyLogging {
   val WhiteListedFailureUrls = get("WHITELISTED_FAILUREURLS")
 
   val KongAdminPort = get("KONG_ADMIN_PORT")
-  val KongHostName = "kong"
+  val KongHostName = "api-gateway"
   val KongUsernamePrefix = "ndla-"
 
   var MetaUserName = "auth_write"
