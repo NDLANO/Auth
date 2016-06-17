@@ -61,7 +61,7 @@ trait KongServiceComponent {
     }
 
     private def createKey(id: String): KongKey = {
-      val response: HttpResponse[String] = Http(s"$kongBaseUrl/$id/key-auth").method("POST").asString
+      val response: HttpResponse[String] = Http(s"$kongBaseUrl/$id/key-auth").method("POST").header("Content-Type", "application/x-www-form-urlencoded").asString
 
       if (response.isError) {
         throw new RuntimeException("Unable to create key: " + response.body)
