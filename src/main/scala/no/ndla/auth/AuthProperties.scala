@@ -15,7 +15,7 @@ object AuthProperties extends LazyLogging {
   val KongHostName = "api-gateway"
   val KongUsernamePrefix = "ndla-"
 
-  var MetaUserName = "auth_write"
+  var MetaUserName = get("DB_USER")
   var MetaPassword = get("DB_PASSWORD")
   var MetaResource = get("DB_RESOURCE")
   var MetaServer = get("DB_SERVER")
