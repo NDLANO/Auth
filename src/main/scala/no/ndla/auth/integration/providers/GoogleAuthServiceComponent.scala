@@ -13,6 +13,7 @@ import scalaj.http.HttpResponse
 
 trait GoogleAuthServiceComponent {
   this: UsersRepositoryComponent with StateRepositoryComponent =>
+  val googleAuthService: GoogleAuthService
 
   class GoogleAuthService extends StrictLogging {
     implicit val formats = DefaultFormats // Brings in default date formats etc for Json

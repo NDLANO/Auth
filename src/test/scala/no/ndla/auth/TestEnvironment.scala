@@ -1,5 +1,6 @@
 package no.ndla.auth
 
+import no.ndla.auth.controller.AuthController
 import no.ndla.auth.integration.providers.{FacebookAuthServiceComponent, GoogleAuthServiceComponent, TwitterAuthServiceComponent}
 import no.ndla.auth.integration.{DataSourceComponent, KongServiceComponent}
 import no.ndla.auth.repository.{StateRepositoryComponent, UsersRepositoryComponent}
@@ -14,6 +15,7 @@ trait TestEnvironment
     with GoogleAuthServiceComponent
     with TwitterAuthServiceComponent
     with KongServiceComponent
+    with AuthController
     with MockitoSugar
 {
   val dataSource = JdbcConnectionPool.create("jdbc:h2:mem:test", "sa", "sa")
@@ -25,4 +27,5 @@ trait TestEnvironment
   val googleAuthService = mock[GoogleAuthService]
   val twitterAuthService = mock[TwitterAuthService]
   val kongService = mock[KongService]
+  val authController = mock[AuthController]
 }

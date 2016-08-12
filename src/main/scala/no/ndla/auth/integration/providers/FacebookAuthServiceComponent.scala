@@ -13,7 +13,7 @@ import scalaj.http.HttpResponse
 
 trait FacebookAuthServiceComponent {
   this: UsersRepositoryComponent with StateRepositoryComponent =>
-    val facebookAuthService: FacebookAuthService
+  val facebookAuthService: FacebookAuthService
 
     class FacebookAuthService {
 

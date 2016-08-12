@@ -1,16 +1,21 @@
 package no.ndla.auth
 
+import com.typesafe.scalalogging.LazyLogging
 import org.eclipse.jetty.server.Server
 import org.eclipse.jetty.servlet.{DefaultServlet, ServletContextHandler}
 import org.scalatra.servlet.ScalatraListener
+import scala.io.Source
 
 
-object JettyLauncher {
+object JettyLauncher extends LazyLogging {
   def main(args: Array[String]) {
-    AuthProperties.verify()
+    logger.info(Source.fromInputStream(getClass.getResourceAsStream("/log-license.txt")).mkString)
+
+    PropertiesLoader.load()
     DBMigrator.migrate(ComponentRegistry.dataSource)
 
-    val port = 80
+    val startMillis = System.currentTimeMillis
+    val port = AuthProperties.ApplicationPort
 
     val servletContext = new ServletContextHandler
     servletContext.setContextPath("/")
@@ -22,9 +27,9 @@ object JettyLauncher {
     server.setHandler(servletContext)
     server.start()
 
+    val startTime = System.currentTimeMillis - startMillis
+    logger.info(s"Started at port $port in $startTime ms.")
+
     server.join()
   }
 }
-
-
-

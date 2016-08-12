@@ -14,6 +14,7 @@ import com.netaporter.uri.dsl._
 
 trait TwitterAuthServiceComponent {
   this: UsersRepositoryComponent with StateRepositoryComponent =>
+  val twitterAuthService: TwitterAuthService
 
   class TwitterAuthService {
 
