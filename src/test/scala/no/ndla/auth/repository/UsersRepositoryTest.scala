@@ -1,3 +1,11 @@
+/*
+ * Part of NDLA auth.
+ * Copyright (C) 2016 NDLA
+ *
+ * See LICENSE
+ *
+ */
+
 package no.ndla.auth.repository
 
 import no.ndla.auth.exception.NoSuchUserException

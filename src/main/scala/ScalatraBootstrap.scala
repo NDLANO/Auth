@@ -1,3 +1,11 @@
+/*
+ * Part of NDLA auth.
+ * Copyright (C) 2016 NDLA
+ *
+ * See LICENSE
+ *
+ */
+
 import no.ndla.auth._
 import org.scalatra._
 import javax.servlet.ServletContext

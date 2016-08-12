@@ -1,3 +1,11 @@
+/*
+ * Part of NDLA auth.
+ * Copyright (C) 2016 NDLA
+ *
+ * See LICENSE
+ *
+ */
+
 package no.ndla.auth.integration.providers
 
 import com.typesafe.scalalogging.StrictLogging
