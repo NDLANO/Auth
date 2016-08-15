@@ -33,7 +33,7 @@ trait AuthController {
 
   val authController: AuthController
 
-  class AuthController(implicit val swagger: Swagger) extends ScalatraServlet with NativeJsonSupport with SwaggerSupport with LazyLogging {
+  class AuthController(implicit val swagger: Swagger) extends ScalatraServlet with NativeJsonSupport with SwaggerSupport with LazyLogging with CorrelationIdSupport {
 
     // Sets up automatic case class to JSON output serialization, required by
     // the JValueResult trait.
@@ -132,6 +132,7 @@ trait AuthController {
     // Before every action runs, set the content type to be in JSON format.
     before() {
       contentType = formats("json")
+      logger.info("{} {}{}", request.getMethod, request.getRequestURI, Option(request.getQueryString).map(s => s"?$s").getOrElse(""))
     }
 
     error {

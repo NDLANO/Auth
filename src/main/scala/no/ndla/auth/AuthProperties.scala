@@ -27,6 +27,9 @@ object AuthProperties extends LazyLogging {
   val KongHostName = "api-gateway"
   val KongUsernamePrefix = "ndla-"
 
+  val CorrelationIdKey = "correlationID"
+  val CorrelationIdHeader = "X-Correlation-ID"
+
   lazy val MetaUserName = get("DB_USER")
   lazy val MetaPassword = get("DB_PASSWORD")
   lazy val MetaResource = get("DB_RESOURCE")
