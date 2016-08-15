@@ -1,0 +1,6 @@
+Configuration:
+  status: info
+
+  Loggers:
+    Root:
+      level: info

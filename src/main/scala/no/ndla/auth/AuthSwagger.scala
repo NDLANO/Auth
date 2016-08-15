@@ -1,3 +1,11 @@
+/*
+ * Part of NDLA auth.
+ * Copyright (C) 2016 NDLA
+ *
+ * See LICENSE
+ *
+ */
+
 package no.ndla.auth
 
 import org.scalatra.ScalatraServlet
@@ -10,7 +18,7 @@ object AuthApiInfo {
         "Authentication Api",
         "Documentation for the authentication API of NDLA.no",
         "http://ndla.no",
-        "", // TODO: CONTACT EMAIL
+        AuthProperties.ContactEmail,
         "GPL v3.0",
         "http://www.gnu.org/licenses/gpl-3.0.en.html")
 }

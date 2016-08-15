@@ -1,10 +1,19 @@
+/*
+ * Part of NDLA auth.
+ * Copyright (C) 2016 NDLA
+ *
+ * See LICENSE
+ *
+ */
+
 package no.ndla.auth
 
+import no.ndla.auth.controller.AuthController
 import org.postgresql.ds.PGPoolingDataSource
 import no.ndla.auth.integration.{DataSourceComponent, KongServiceComponent}
 import no.ndla.auth.repository.StateRepositoryComponent
 import no.ndla.auth.repository.UsersRepositoryComponent
-import no.ndla.auth.integration.providers.{TwitterAuthServiceComponent, GoogleAuthServiceComponent, FacebookAuthServiceComponent}
+import no.ndla.auth.integration.providers.{FacebookAuthServiceComponent, GoogleAuthServiceComponent, TwitterAuthServiceComponent}
 
 object ComponentRegistry
   extends DataSourceComponent
@@ -14,7 +23,10 @@ object ComponentRegistry
   with GoogleAuthServiceComponent
   with TwitterAuthServiceComponent
   with KongServiceComponent
+  with AuthController
 {
+  implicit val swagger = new AuthSwagger
+
   val dataSource = new PGPoolingDataSource()
   dataSource.setUser(AuthProperties.MetaUserName)
   dataSource.setPassword(AuthProperties.MetaPassword)
@@ -31,4 +43,6 @@ object ComponentRegistry
   lazy val googleAuthService = new GoogleAuthService
   lazy val twitterAuthService = new TwitterAuthService
   lazy val kongService = new KongService
+  lazy val resourcesApp = new ResourcesApp
+  lazy val authController = new AuthController
 }

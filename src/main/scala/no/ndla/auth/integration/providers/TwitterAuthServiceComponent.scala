@@ -1,3 +1,11 @@
+/*
+ * Part of NDLA auth.
+ * Copyright (C) 2016 NDLA
+ *
+ * See LICENSE
+ *
+ */
+
 package no.ndla.auth.integration.providers
 
 import com.github.scribejava.apis.TwitterApi
@@ -14,6 +22,7 @@ import com.netaporter.uri.dsl._
 
 trait TwitterAuthServiceComponent {
   this: UsersRepositoryComponent with StateRepositoryComponent =>
+  val twitterAuthService: TwitterAuthService
 
   class TwitterAuthService {
 

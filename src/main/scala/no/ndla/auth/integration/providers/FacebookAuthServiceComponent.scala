@@ -1,3 +1,11 @@
+/*
+ * Part of NDLA auth.
+ * Copyright (C) 2016 NDLA
+ *
+ * See LICENSE
+ *
+ */
+
 package no.ndla.auth.integration.providers
 
 import no.ndla.auth._
@@ -13,7 +21,7 @@ import scalaj.http.HttpResponse
 
 trait FacebookAuthServiceComponent {
   this: UsersRepositoryComponent with StateRepositoryComponent =>
-    val facebookAuthService: FacebookAuthService
+  val facebookAuthService: FacebookAuthService
 
     class FacebookAuthService {
 

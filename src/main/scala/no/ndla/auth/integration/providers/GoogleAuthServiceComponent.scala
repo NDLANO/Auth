@@ -1,3 +1,11 @@
+/*
+ * Part of NDLA auth.
+ * Copyright (C) 2016 NDLA
+ *
+ * See LICENSE
+ *
+ */
+
 package no.ndla.auth.integration.providers
 
 import com.typesafe.scalalogging.StrictLogging
@@ -13,6 +21,7 @@ import scalaj.http.HttpResponse
 
 trait GoogleAuthServiceComponent {
   this: UsersRepositoryComponent with StateRepositoryComponent =>
+  val googleAuthService: GoogleAuthService
 
   class GoogleAuthService extends StrictLogging {
     implicit val formats = DefaultFormats // Brings in default date formats etc for Json
