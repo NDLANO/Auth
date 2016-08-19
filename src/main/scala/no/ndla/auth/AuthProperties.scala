@@ -20,6 +20,8 @@ object AuthProperties extends LazyLogging {
   val ApplicationPort = 80
   lazy val ContactEmail = get("CONTACT_EMAIL")
 
+  val HealthControllerPath = "/health"
+
   lazy val WhiteListedSuccessUrls = get("WHITELISTED_SUCCESSURLS")
   lazy val WhiteListedFailureUrls = get("WHITELISTED_FAILUREURLS")
 
