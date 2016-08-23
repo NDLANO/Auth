@@ -8,7 +8,7 @@
 
 package no.ndla.auth
 
-import no.ndla.auth.controller.AuthController
+import no.ndla.auth.controller.{AuthController, HealthController}
 import org.postgresql.ds.PGPoolingDataSource
 import no.ndla.auth.integration.{DataSourceComponent, KongServiceComponent}
 import no.ndla.auth.repository.StateRepositoryComponent
@@ -24,6 +24,7 @@ object ComponentRegistry
   with TwitterAuthServiceComponent
   with KongServiceComponent
   with AuthController
+  with HealthController
 {
   implicit val swagger = new AuthSwagger
 
@@ -45,4 +46,5 @@ object ComponentRegistry
   lazy val kongService = new KongService
   lazy val resourcesApp = new ResourcesApp
   lazy val authController = new AuthController
+  lazy val healthController = new HealthController
 }
