@@ -1,4 +1,5 @@
 # Auth #
+[![Build Status](https://travis-ci.org/NDLANO/auth.svg?branch=master)](https://travis-ci.org/NDLANO/auth)
 
 ## Build & Run ##
 
