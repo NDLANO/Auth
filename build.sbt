@@ -30,8 +30,8 @@ lazy val auth = (project in file(".")).
   settings(commonSettings: _*).
   settings(
     name := "auth",
-    javacOptions ++= Seq("-source", "1.7", "-target", "1.7"),
-    scalacOptions := Seq("-target:jvm-1.7"),
+    javacOptions ++= Seq("-source", "1.8", "-target", "1.8"),
+    scalacOptions := Seq("-target:jvm-1.8"),
     libraryDependencies ++= Seq(
       "ndla" %% "network" % "0.4",
       "org.scalatra" %% "scalatra" % Scalatraversion,
@@ -100,3 +100,5 @@ imageNames in docker := Seq(
 )
 
 parallelExecution in Test := false
+
+resolvers ++= scala.util.Properties.envOrNone("NDLA_RELEASES").map(repo => "Release Sonatype Nexus Repository Manager" at repo).toSeq
