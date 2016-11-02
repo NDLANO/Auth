@@ -9,10 +9,9 @@
 package no.ndla.auth
 
 import com.typesafe.scalalogging.LazyLogging
-
 import scala.collection.mutable
 import scala.io.Source
-
+import no.ndla.network.secrets.PropertyKeys._
 
 object AuthProperties extends LazyLogging {
   var AuthApiProps: mutable.Map[String, Option[String]] = mutable.HashMap()
@@ -20,10 +19,11 @@ object AuthProperties extends LazyLogging {
   val ApplicationPort = 80
   lazy val ContactEmail = get("CONTACT_EMAIL")
 
+  lazy val Environment = get("NDLA_ENVIRONMENT")
   val HealthControllerPath = "/health"
 
-  lazy val WhiteListedSuccessUrls = get("WHITELISTED_SUCCESSURLS")
-  lazy val WhiteListedFailureUrls = get("WHITELISTED_FAILUREURLS")
+  lazy val WhiteListedSuccessUrls = getWhitelistedUrls(get("WHITELISTED_SUCCESSURLS"))
+  lazy val WhiteListedFailureUrls = getWhitelistedUrls(get("WHITELISTED_FAILUREURLS"))
 
   lazy val KongAdminPort = get("KONG_ADMIN_PORT")
   val KongHostName = "api-gateway"
@@ -32,14 +32,14 @@ object AuthProperties extends LazyLogging {
   val CorrelationIdKey = "correlationID"
   val CorrelationIdHeader = "X-Correlation-ID"
 
-  lazy val MetaUserName = get("DB_USER")
-  lazy val MetaPassword = get("DB_PASSWORD")
-  lazy val MetaResource = get("DB_RESOURCE")
-  lazy val MetaServer = get("DB_SERVER")
-  lazy val MetaSchema = get("DB_SCHEMA")
-  val MetaPort = 5432
-  val MetaMaxConnections = 20
+  lazy val MetaUserName = get(MetaUserNameKey)
+  lazy val MetaPassword = get(MetaPasswordKey)
+  lazy val MetaResource = get(MetaResourceKey)
+  lazy val MetaServer = get(MetaServerKey)
+  lazy val MetaPort = getInt(MetaPortKey)
+  lazy val MetaSchema = get(MetaSchemaKey)
   val MetaInitialConnections = 3
+  val MetaMaxConnections = 20
 
   def setProperties(properties: Map[String, Option[String]]) = {
     properties.foreach(prop => AuthApiProps.put(prop._1, prop._2))
@@ -60,6 +60,15 @@ object AuthProperties extends LazyLogging {
       case Some(value) => value.get
       case None => throw new NoSuchFieldError(s"Missing environment variable $envKey")
     }
+  }
+
+  private def getWhitelistedUrls(unparsedWhiteListUrls: String): Map[String, String] =
+    unparsedWhiteListUrls.split(",").map(_ split "->") collect { case Array(k, v) => (k.trim, s"http://$getDomain${v.trim}") } toMap
+
+  private def getDomain: String = {
+    Map("local" -> "http://localhost",
+        "prod" -> "http://api.ndla.no"
+    ).getOrElse(Environment, s"http://api.$Environment.ndla.no")
   }
 
   def getWithPrefix(prefix: String): Map[String, Option[String]] = {

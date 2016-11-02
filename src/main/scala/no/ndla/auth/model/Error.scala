@@ -17,8 +17,10 @@ object Error {
   val NOT_FOUND = "3"
   val HEADER_MISSING = "4"
   val PARAMETER_MISSING = "5"
+  val VALIDATION = "6"
 
   val GenericError = Error(GENERIC, s"Ooops. Something we didn't anticipate occurred. We have logged the error, and will look into it.")
 }
 
 case class Error(code: String, description: String, occurredAt: String = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS").format(new Date()))
+class ValidationException(message: String) extends RuntimeException(message)

@@ -10,13 +10,9 @@ package no.ndla.auth.controller
 
 import javax.servlet.http.HttpServletRequest
 
-import com.typesafe.scalalogging.LazyLogging
 import no.ndla.auth.exception.{HeaderMissingException, NoSuchUserException, ParameterMissingException}
 import no.ndla.auth.model.{Error, KongKey, NdlaUser, NdlaUserName}
-import no.ndla.auth.WhiteListedUrls
 import org.json4s.{DefaultFormats, Formats}
-import org.scalatra.ScalatraServlet
-import org.scalatra.json.NativeJsonSupport
 import org.scalatra.swagger._
 import no.ndla.auth.AuthProperties.KongUsernamePrefix
 import no.ndla.auth.integration.KongServiceComponent
@@ -33,11 +29,8 @@ trait AuthController {
 
   val authController: AuthController
 
-  class AuthController(implicit val swagger: Swagger) extends ScalatraServlet with NativeJsonSupport with SwaggerSupport with LazyLogging with CorrelationIdSupport {
-
-    // Sets up automatic case class to JSON output serialization, required by
-    // the JValueResult trait.
-    protected implicit val jsonFormats: Formats = DefaultFormats ++ org.json4s.ext.JodaTimeSerializers.all
+  class AuthController(implicit val swagger: Swagger) extends NdlaController {
+    protected implicit override val jsonFormats: Formats = DefaultFormats ++ org.json4s.ext.JodaTimeSerializers.all
 
     protected val applicationDescription = "API for accessing authentication API from ndla.no."
 
@@ -168,9 +161,7 @@ trait AuthController {
     }
 
     get("/login/google", operation(loginGoogle)) {
-      val successUrl = WhiteListedUrls.getSuccessUrl(params.get("successUrl"))
-      val failureUrl = WhiteListedUrls.getFailureUrl(params.get("failureUrl"))
-      redirect(googleAuthService.getRedirectUri(successUrl, failureUrl))
+      redirect(googleAuthService.getRedirectUri(getLoginSuccessUrl, getLoginFailureUrl))
     }
 
     get("/login/google/verify", operation(verifyGoogle)) {
@@ -190,9 +181,7 @@ trait AuthController {
     }
 
     get("/login/facebook", operation(loginFacebook)) {
-      val successUrl = WhiteListedUrls.getSuccessUrl(params.get("successUrl"))
-      val failureUrl = WhiteListedUrls.getFailureUrl(params.get("failureUrl"))
-      redirect(facebookAuthService.getRedirect(successUrl, failureUrl))
+      redirect(facebookAuthService.getRedirect(getLoginSuccessUrl, getLoginFailureUrl))
     }
 
     get("/login/facebook/verify", operation(verifyFacebook)) {
@@ -224,9 +213,7 @@ trait AuthController {
     }
 
     get("/login/twitter", operation(loginTwitter)) {
-      val successUrl = WhiteListedUrls.getSuccessUrl(params.get("successUrl"))
-      val failureUrl = WhiteListedUrls.getFailureUrl(params.get("failureUrl"))
-      redirect(twitterAuthService.getRedirectUri(successUrl, failureUrl))
+      redirect(twitterAuthService.getRedirectUri(getLoginSuccessUrl, getLoginFailureUrl))
     }
 
     get("/login/twitter/verify", operation(verifyTwitter)) {
