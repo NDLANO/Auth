@@ -9,24 +9,45 @@
 package no.ndla.auth
 
 import com.typesafe.scalalogging.LazyLogging
+
 import scala.collection.mutable
 import scala.io.Source
 import no.ndla.network.secrets.PropertyKeys._
+import no.ndla.network.secrets.Secrets._
+
+import scala.util.{Failure, Properties, Success, Try}
 
 object AuthProperties extends LazyLogging {
   var AuthApiProps: mutable.Map[String, Option[String]] = mutable.HashMap()
 
   val ApplicationPort = 80
-  lazy val ContactEmail = get("CONTACT_EMAIL")
+  lazy val ContactEmail = "christergundersen@ndla.no"
 
   lazy val Environment = get("NDLA_ENVIRONMENT")
+  lazy val Domain = getDomain
   val HealthControllerPath = "/health"
 
-  lazy val WhiteListedSuccessUrls = getWhitelistedUrls(get("WHITELISTED_SUCCESSURLS"))
-  lazy val WhiteListedFailureUrls = getWhitelistedUrls(get("WHITELISTED_FAILUREURLS"))
+  lazy val WhiteListedSuccessUrls = Map(
+    "/login/success/{appkey}" -> s"$Domain:8080/login/success/{appkey}",
+    "/images" -> s"$Domain/images"
+  )
 
-  lazy val KongAdminPort = get("KONG_ADMIN_PORT")
-  val KongHostName = "api-gateway"
+  lazy val WhiteListedFailureUrls = Map(
+    "/login/failure" -> s"$Domain:8080/login/failure",
+    "/" -> s"$Domain/"
+  )
+
+  lazy val GoogleClientSecret = get("GOOGLE_CLIENT_SECRET")
+  lazy val GoogleClientId = get("GOOGLE_CLIENT_ID")
+
+  lazy val FacebookClientSecret = get("FACEBOOK_CLIENT_SECRET")
+  lazy val FacebookClientId = get("FACEBOOK_CLIENT_ID")
+
+  lazy val TwitterApiKey = get("TWITTER_API_KEY")
+  lazy val TwitterClientSecret = get("TWITTER_CLIENT_SECRET")
+
+  lazy val KongAdminPort = 8001
+  val KongHostName = "api-gateway.ndla-local"
   val KongUsernamePrefix = "ndla-"
 
   val CorrelationIdKey = "correlationID"
@@ -41,8 +62,13 @@ object AuthProperties extends LazyLogging {
   val MetaInitialConnections = 3
   val MetaMaxConnections = 20
 
+
   def setProperties(properties: Map[String, Option[String]]) = {
-    properties.foreach(prop => AuthApiProps.put(prop._1, prop._2))
+    val missingProperties = properties.filter(_._2.isEmpty).keys
+    missingProperties.isEmpty match {
+      case true => Success(properties.foreach(prop => AuthApiProps.put(prop._1, prop._2)))
+      case false => Failure(new RuntimeException(s"Missing required properties: ${missingProperties.mkString(", ")}"))
+    }
   }
 
   def verify() = {
@@ -62,9 +88,6 @@ object AuthProperties extends LazyLogging {
     }
   }
 
-  private def getWhitelistedUrls(unparsedWhiteListUrls: String): Map[String, String] =
-    unparsedWhiteListUrls.split(",").map(_ split "->") collect { case Array(k, v) => (k.trim, s"http://$getDomain${v.trim}") } toMap
-
   private def getDomain: String = {
     Map("local" -> "http://localhost",
         "prod" -> "http://api.ndla.no"
@@ -82,16 +105,24 @@ object AuthProperties extends LazyLogging {
   }
 }
 
-object PropertiesLoader {
+object PropertiesLoader extends LazyLogging {
   val EnvironmentFile = "/auth.env"
 
-  private def readPropertyFile(): Map[String, Option[String]] = {
-    val keys = Source.fromInputStream(getClass.getResourceAsStream(EnvironmentFile)).getLines().withFilter(line => line.matches("^\\w+$"))
-    keys.map(key => key -> scala.util.Properties.envOrNone(key)).toMap
+  def readPropertyFile() = {
+    Try(Source.fromInputStream(getClass.getResourceAsStream(EnvironmentFile)).getLines().withFilter(line => line.matches("^\\w+$")).map(key => key -> Properties.envOrNone(key)).toMap)
   }
 
   def load() = {
-    AuthProperties.setProperties(readPropertyFile())
-    AuthProperties.verify()
+    val ApiSecretKeys = Set("GOOGLE_CLIENT_SECRET", "GOOGLE_CLIENT_ID", "FACEBOOK_CLIENT_SECRET", "FACEBOOK_CLIENT_ID", "TWITTER_API_KEY", "TWITTER_CLIENT_SECRET")
+    val verification = for {
+      file <- readPropertyFile()
+      secrets <- readSecrets("auth.secrets", ApiSecretKeys)
+      didSetProperties <- AuthProperties.setProperties(file ++ secrets)
+    } yield didSetProperties
+
+    if(verification.isFailure){
+      logger.error("Unable to load properties", verification.failed.get)
+      System.exit(1)
+    }
   }
 }

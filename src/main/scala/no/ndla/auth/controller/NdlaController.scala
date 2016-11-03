@@ -16,7 +16,8 @@ import org.json4s.{DefaultFormats, Formats}
 import org.scalatra.ScalatraServlet
 import org.scalatra.json.NativeJsonSupport
 import no.ndla.network.{ApplicationUrl, CorrelationID}
-import no.ndla.auth.AuthProperties.{CorrelationIdHeader, CorrelationIdKey, WhiteListedSuccessUrls, WhiteListedFailureUrls}
+import no.ndla.auth.AuthProperties.{CorrelationIdHeader, CorrelationIdKey, WhiteListedFailureUrls, WhiteListedSuccessUrls}
+import no.ndla.auth.exception.{HeaderMissingException, ParameterMissingException}
 import no.ndla.auth.model.{Error, ValidationException}
 import org.scalatra.swagger.SwaggerSupport
 
@@ -45,14 +46,6 @@ abstract class NdlaController extends ScalatraServlet with NativeJsonSupport wit
     }
   }
 
-  def long(paramName: String)(implicit request: HttpServletRequest): Long = {
-    val paramValue = params(paramName)
-    paramValue.forall(_.isDigit) match {
-      case true => paramValue.toLong
-      case false => throw new ValidationException(s"Invalid value for $paramName. Only digits are allowed.")
-    }
-  }
-
   def getLoginFailureUrl(implicit request: HttpServletRequest): String = {
     val defaultFailureUrl = WhiteListedFailureUrls.head._2
     params.get("failureUrl") match {
@@ -66,6 +59,26 @@ abstract class NdlaController extends ScalatraServlet with NativeJsonSupport wit
     params.get("successUrl") match {
       case Some(url) => WhiteListedSuccessUrls.getOrElse(url, defaultSuccessUrl)
       case None => defaultSuccessUrl
+    }
+  }
+
+  def requireHeader(headerName: String)(implicit request: HttpServletRequest): String = {
+    request.header(headerName) match {
+      case Some(value) => value
+      case None => {
+        logger.warn(s"Request made to ${request.getRequestURI} without required header $headerName.")
+        throw new HeaderMissingException(s"The required header $headerName is missing.")
+      }
+    }
+  }
+
+  def requireParam(paramName: String)(implicit request: HttpServletRequest): String = {
+    params.get(paramName) match {
+      case Some(value) => value
+      case None => {
+        logger.warn(s"Request made to ${request.getRequestURI} without required parameter $paramName")
+        throw new ParameterMissingException(s"The required parameter $paramName is missing")
+      }
     }
   }
 

@@ -232,25 +232,5 @@ trait AuthController {
       halt(status = 302, headers = Map("app-key" -> kongKey.key, "Location" -> successUrl.replace("{appkey}", kongKey.key)))
     }
 
-    def requireHeader(headerName: String)(implicit request: HttpServletRequest): String = {
-      request.header(headerName) match {
-        case Some(value) => value
-        case None => {
-          logger.warn(s"Request made to ${request.getRequestURI} without required header $headerName.")
-          throw new HeaderMissingException(s"The required header $headerName is missing.")
-        }
-      }
-    }
-
-    def requireParam(paramName: String)(implicit request: HttpServletRequest): String = {
-      params.get(paramName) match {
-        case Some(value) => value
-        case None => {
-          logger.warn(s"Request made to ${request.getRequestURI} without required parameter $paramName")
-          throw new ParameterMissingException(s"The required parameter $paramName is missing")
-        }
-      }
-    }
-
   }
 }
