@@ -68,7 +68,7 @@ object AuthProperties extends LazyLogging {
   val MetaInitialConnections = 3
   val MetaMaxConnections = 20
 
-  lazy val secrets = readSecrets(SecretsFile) match {
+  lazy val secrets = readSecrets(SecretsFile, ApiSecretKeys) match {
      case Success(values) => values
      case Failure(exception) => throw new RuntimeException(s"Unable to load remote secrets from $SecretsFile", exception)
    }
