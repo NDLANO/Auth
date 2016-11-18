@@ -12,6 +12,7 @@ import com.typesafe.scalalogging.LazyLogging
 import no.ndla.network.secrets.PropertyKeys._
 import no.ndla.network.secrets.Secrets._
 
+import scala.util.{Failure, Success}
 import scala.util.Properties._
 
 object AuthProperties extends LazyLogging {
@@ -28,7 +29,6 @@ object AuthProperties extends LazyLogging {
 
   val SecretsFile = "auth.secrets"
   val ApiSecretKeys = Set(GoogleClientSecretKey, GoogleClientIdKey, FacebookClientSecretKey, FacebookClientIdKey, TwitterApiKeyKey, TwitterClientSecretKey)
-  lazy val secrets = readSecrets(SecretsFile, ApiSecretKeys).getOrElse(throw new RuntimeException(s"Unable to load remote secrets from $SecretsFile"))
 
   val Environment = propOrElse("NDLA_ENVIRONMENT", "local")
   val Domain = Map(
@@ -67,6 +67,11 @@ object AuthProperties extends LazyLogging {
   val MetaSchema = prop(MetaSchemaKey)
   val MetaInitialConnections = 3
   val MetaMaxConnections = 20
+
+  lazy val secrets = readSecrets(SecretsFile, ApiSecretKeys) match {
+     case Success(values) => values
+     case Failure(exception) => throw new RuntimeException(s"Unable to load remote secrets from $SecretsFile", exception)
+   }
 
   def prop(key: String): String = {
     propOrElse(key, throw new RuntimeException(s"Unable to load property $key"))
