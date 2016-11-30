@@ -36,14 +36,18 @@ object AuthProperties extends LazyLogging {
     "prod" -> "http://api.ndla.no"
   ).getOrElse(Environment, s"http://api.$Environment.ndla.no")
 
+  val LearningpathFrontendDomain = Map(
+    "local" -> "http://localhost:30007",
+    "prod" -> "http://sti.ndla.no"
+  ).getOrElse(Environment, s"http://sti.$Environment.ndla.no")
 
   val WhiteListedSuccessUrls = Map(
-    "/login/success/{appkey}" -> s"$Domain:8080/login/success/{appkey}",
-    "/images" -> s"$Domain/images")
+    "/login/success/{appkey}" -> s"$LearningpathFrontendDomain/login/success/{appkey}",
+    "/images" -> s"$LearningpathFrontendDomain/images")
 
   val WhiteListedFailureUrls = Map(
-    "/login/failure" -> s"$Domain:8080/login/failure",
-    "/" -> s"$Domain/")
+    "/login/failure" -> s"$LearningpathFrontendDomain/login/failure",
+    "/" -> s"$LearningpathFrontendDomain/")
 
   val GoogleClientSecret = prop(GoogleClientSecretKey)
   val GoogleClientId = prop(GoogleClientIdKey)
