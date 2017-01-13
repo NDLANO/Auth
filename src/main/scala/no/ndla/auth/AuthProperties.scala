@@ -9,80 +9,85 @@
 package no.ndla.auth
 
 import com.typesafe.scalalogging.LazyLogging
+import no.ndla.network.secrets.PropertyKeys._
+import no.ndla.network.secrets.Secrets._
 
-import scala.collection.mutable
-import scala.io.Source
-
+import scala.util.{Failure, Success}
+import scala.util.Properties._
 
 object AuthProperties extends LazyLogging {
-  var AuthApiProps: mutable.Map[String, Option[String]] = mutable.HashMap()
-
   val ApplicationPort = 80
-  lazy val ContactEmail = get("CONTACT_EMAIL")
-
+  val ContactEmail = "christergundersen@ndla.no"
   val HealthControllerPath = "/health"
 
-  lazy val WhiteListedSuccessUrls = get("WHITELISTED_SUCCESSURLS")
-  lazy val WhiteListedFailureUrls = get("WHITELISTED_FAILUREURLS")
+  val GoogleClientSecretKey = "GOOGLE_CLIENT_SECRET"
+  val GoogleClientIdKey = "GOOGLE_CLIENT_ID"
+  val FacebookClientSecretKey = "FACEBOOK_CLIENT_SECRET"
+  val FacebookClientIdKey = "FACEBOOK_CLIENT_ID"
+  val TwitterApiKeyKey = "TWITTER_API_KEY"
+  val TwitterClientSecretKey = "TWITTER_CLIENT_SECRET"
 
-  lazy val KongAdminPort = get("KONG_ADMIN_PORT")
-  val KongHostName = "api-gateway"
+  val SecretsFile = "auth.secrets"
+  val ApiSecretKeys = Set(GoogleClientSecretKey, GoogleClientIdKey, FacebookClientSecretKey, FacebookClientIdKey, TwitterApiKeyKey, TwitterClientSecretKey)
+
+  val Environment = propOrElse("NDLA_ENVIRONMENT", "local")
+  val Domain = Map(
+    "local" -> "http://localhost",
+    "prod" -> "http://api.ndla.no"
+  ).getOrElse(Environment, s"http://$Environment.api.ndla.no")
+
+  val LearningpathFrontendDomain = Map(
+    "local" -> "http://localhost:30007",
+    "prod" -> "http://sti.ndla.no"
+  ).getOrElse(Environment, s"http://learningpath-frontend.$Environment.api.ndla.no")
+
+  val WhiteListedSuccessUrls = Map("/login/success/{appkey}" -> s"$LearningpathFrontendDomain/login/success/{appkey}")
+
+  val WhiteListedFailureUrls = Map(
+    "/login/failure" -> s"$LearningpathFrontendDomain/login/failure",
+    "/" -> s"$LearningpathFrontendDomain/")
+
+  val GoogleClientSecret = prop(GoogleClientSecretKey)
+  val GoogleClientId = prop(GoogleClientIdKey)
+  val FacebookClientSecret = prop(FacebookClientSecretKey)
+  val FacebookClientId = prop(FacebookClientIdKey)
+  val TwitterApiKey = prop(TwitterApiKeyKey)
+  val TwitterClientSecret = prop(TwitterClientSecretKey)
+
+  val KongAdminPort = 8001
+  val KongHostName = "api-gateway.ndla-local"
   val KongUsernamePrefix = "ndla-"
 
   val CorrelationIdKey = "correlationID"
   val CorrelationIdHeader = "X-Correlation-ID"
 
-  lazy val MetaUserName = get("DB_USER")
-  lazy val MetaPassword = get("DB_PASSWORD")
-  lazy val MetaResource = get("DB_RESOURCE")
-  lazy val MetaServer = get("DB_SERVER")
-  lazy val MetaSchema = get("DB_SCHEMA")
-  val MetaPort = 5432
-  val MetaMaxConnections = 20
+  val MetaUserName = prop(MetaUserNameKey)
+  val MetaPassword = prop(MetaPasswordKey)
+  val MetaResource = prop(MetaResourceKey)
+  val MetaServer = prop(MetaServerKey)
+  val MetaPort = prop(MetaPortKey).toInt
+  val MetaSchema = prop(MetaSchemaKey)
   val MetaInitialConnections = 3
+  val MetaMaxConnections = 20
 
-  def setProperties(properties: Map[String, Option[String]]) = {
-    properties.foreach(prop => AuthApiProps.put(prop._1, prop._2))
+  lazy val secrets = readSecrets(SecretsFile, ApiSecretKeys) match {
+     case Success(values) => values
+     case Failure(exception) => throw new RuntimeException(s"Unable to load remote secrets from $SecretsFile", exception)
+   }
+
+  def prop(key: String): String = {
+    propOrElse(key, throw new RuntimeException(s"Unable to load property $key"))
   }
 
-  def verify() = {
-    val missingProperties = AuthApiProps.filter(entry => entry._2.isEmpty).toList
-    if (missingProperties.nonEmpty) {
-      missingProperties.foreach(entry => logger.error("Missing required environment variable {}", entry._1))
-
-      logger.error("Shutting down.")
-      System.exit(1)
+  def propOrElse(key: String, default: => String): String = {
+    secrets.get(key).flatten match {
+      case Some(secret) => secret
+      case None =>
+        envOrNone(key) match {
+          case Some(env) => env
+          case None => default
+        }
     }
-  }
-
-  private def get(envKey: String): String = {
-    AuthApiProps.get(envKey) match {
-      case Some(value) => value.get
-      case None => throw new NoSuchFieldError(s"Missing environment variable $envKey")
-    }
-  }
-
-  def getWithPrefix(prefix: String): Map[String, Option[String]] = {
-    AuthApiProps.filterKeys(_.startsWith(prefix)).map {
-      case (key, value) => key.replaceFirst(prefix, "") -> value
-    }.toMap
-  }
-
-  private def getInt(envKey: String): Integer = {
-    get(envKey).toInt
   }
 }
 
-object PropertiesLoader {
-  val EnvironmentFile = "/auth.env"
-
-  private def readPropertyFile(): Map[String, Option[String]] = {
-    val keys = Source.fromInputStream(getClass.getResourceAsStream(EnvironmentFile)).getLines().withFilter(line => line.matches("^\\w+$"))
-    keys.map(key => key -> scala.util.Properties.envOrNone(key)).toMap
-  }
-
-  def load() = {
-    AuthProperties.setProperties(readPropertyFile())
-    AuthProperties.verify()
-  }
-}
