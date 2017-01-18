@@ -9,6 +9,7 @@
 package no.ndla.auth
 
 import com.typesafe.scalalogging.LazyLogging
+import no.ndla.network.Domains
 import no.ndla.network.secrets.PropertyKeys._
 import no.ndla.network.secrets.Secrets._
 
@@ -31,15 +32,13 @@ object AuthProperties extends LazyLogging {
   val ApiSecretKeys = Set(GoogleClientSecretKey, GoogleClientIdKey, FacebookClientSecretKey, FacebookClientIdKey, TwitterApiKeyKey, TwitterClientSecretKey)
 
   val Environment = propOrElse("NDLA_ENVIRONMENT", "local")
-  val Domain = Map(
-    "local" -> "http://localhost",
-    "prod" -> "http://api.ndla.no"
-  ).getOrElse(Environment, s"http://$Environment.api.ndla.no")
+
+  lazy val Domain = Domains.get(Environment)
 
   val LearningpathFrontendDomain = Map(
     "local" -> "http://localhost:30007",
-    "prod" -> "http://sti.ndla.no"
-  ).getOrElse(Environment, s"http://learningpath-frontend.$Environment.api.ndla.no")
+    "prod" -> "https://learningpath-frontend.api.ndla.no"
+  ).getOrElse(Environment, s"https://learningpath-frontend.$Environment.api.ndla.no")
 
   val WhiteListedSuccessUrls = Map("/login/success/{appkey}" -> s"$LearningpathFrontendDomain/login/success/{appkey}")
 
