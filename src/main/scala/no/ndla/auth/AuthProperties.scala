@@ -33,7 +33,7 @@ object AuthProperties extends LazyLogging {
 
   val Environment = propOrElse("NDLA_ENVIRONMENT", "local")
 
-  lazy val Domain = Map(
+  val Domain = Map(
     "local" -> "http://local.ndla.no"
   ).getOrElse(Environment, Domains.get(Environment))
 
