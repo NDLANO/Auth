@@ -28,6 +28,8 @@ object AuthProperties extends LazyLogging {
   val TwitterApiKeyKey = "TWITTER_API_KEY"
   val TwitterClientSecretKey = "TWITTER_CLIENT_SECRET"
 
+  val TokenValidityInSeconds:Long = 60 * 60
+
   val SecretsFile = "auth.secrets"
   val ApiSecretKeys = Set(GoogleClientSecretKey, GoogleClientIdKey, FacebookClientSecretKey, FacebookClientIdKey, TwitterApiKeyKey, TwitterClientSecretKey)
 

@@ -8,12 +8,13 @@
 
 package no.ndla.auth
 
-import no.ndla.auth.controller.{AuthController, HealthController}
+import no.ndla.auth.controller.{AuthController, HealthController, TokenController}
 import org.postgresql.ds.PGPoolingDataSource
 import no.ndla.auth.integration.{DataSourceComponent, KongServiceComponent}
 import no.ndla.auth.repository.StateRepositoryComponent
 import no.ndla.auth.repository.UsersRepositoryComponent
 import no.ndla.auth.integration.providers.{FacebookAuthServiceComponent, GoogleAuthServiceComponent, TwitterAuthServiceComponent}
+import no.ndla.auth.service.{Clock, TokenService}
 
 object ComponentRegistry
   extends DataSourceComponent
@@ -25,6 +26,9 @@ object ComponentRegistry
   with KongServiceComponent
   with AuthController
   with HealthController
+  with TokenController
+  with TokenService
+  with Clock
 {
   implicit val swagger = new AuthSwagger
 
@@ -47,4 +51,7 @@ object ComponentRegistry
   lazy val resourcesApp = new ResourcesApp
   lazy val authController = new AuthController
   lazy val healthController = new HealthController
+  lazy val tokenController = new TokenController
+  lazy val tokenService = new TokenService
+  lazy val clock = new SystemClock
 }
