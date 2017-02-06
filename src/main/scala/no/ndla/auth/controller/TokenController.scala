@@ -33,8 +33,8 @@ trait TokenController {
     post("/", operation(getAccessToken)) {
       val tokenRequest = extract[TokenRequest](request.body)
       TokenResponse(tokenService.createToken(
-        tokenRequest.client_id,
-        tokenRequest.client_secret))
+        tokenRequest.clientId,
+        tokenRequest.clientSecret))
     }
 
   }

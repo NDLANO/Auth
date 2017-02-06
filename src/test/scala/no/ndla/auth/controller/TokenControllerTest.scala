@@ -29,8 +29,8 @@ class TokenControllerTest extends UnitSuite with TestEnvironment with ScalatraFu
 
     val tokenRequest =
       s"""{
-        |"client_id": "$clientId",
-        |"client_secret": "$clientSecret"
+        |"clientId": "$clientId",
+        |"clientSecret": "$clientSecret"
         |}""".stripMargin
 
     postJson("/tokens", tokenRequest) {
@@ -46,7 +46,7 @@ class TokenControllerTest extends UnitSuite with TestEnvironment with ScalatraFu
   }
 
   test("That posting valid json, but incomplete tokenRequest returns 400 Bad Request") {
-    postJson("/tokens", """{"client_id": "klient-id"}""") {
+    postJson("/tokens", """{"clientId": "klient-id"}""") {
       status should equal (400)
     }
   }

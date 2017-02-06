@@ -14,5 +14,5 @@ import scala.annotation.meta.field
 
 @ApiModel(description = "Information about the client to get a token for")
 case class TokenRequest (
-  @(ApiModelProperty@field)(description = "The id of the client") client_id: String,
-  @(ApiModelProperty@field)(description = "The secret of the client") client_secret: String)
+  @(ApiModelProperty@field)(description = "The id of the client") clientId: String,
+  @(ApiModelProperty@field)(description = "The secret of the client") clientSecret: String)
