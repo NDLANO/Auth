@@ -9,72 +9,34 @@
 package no.ndla.auth
 
 import com.typesafe.scalalogging.LazyLogging
-import no.ndla.network.Domains
-import no.ndla.network.secrets.PropertyKeys._
 import no.ndla.network.secrets.Secrets._
 
-import scala.util.{Failure, Success}
 import scala.util.Properties._
+import scala.util.{Failure, Success}
 
 object AuthProperties extends LazyLogging {
   val ApplicationPort = 80
   val ContactEmail = "christergundersen@ndla.no"
   val HealthControllerPath = "/health"
-
-  val GoogleClientSecretKey = "GOOGLE_CLIENT_SECRET"
-  val GoogleClientIdKey = "GOOGLE_CLIENT_ID"
-  val FacebookClientSecretKey = "FACEBOOK_CLIENT_SECRET"
-  val FacebookClientIdKey = "FACEBOOK_CLIENT_ID"
-  val TwitterApiKeyKey = "TWITTER_API_KEY"
-  val TwitterClientSecretKey = "TWITTER_CLIENT_SECRET"
-
-  val TokenValidityInSeconds:Long = 60 * 60
-
-  val SecretsFile = "auth.secrets"
-  val ApiSecretKeys = Set(GoogleClientSecretKey, GoogleClientIdKey, FacebookClientSecretKey, FacebookClientIdKey, TwitterApiKeyKey, TwitterClientSecretKey)
-
-  val Environment = propOrElse("NDLA_ENVIRONMENT", "local")
-
-  val Domain = Map(
-    "local" -> "http://local.ndla.no"
-  ).getOrElse(Environment, Domains.get(Environment))
-
-
-  val LearningpathFrontendDomain = Map(
-    "local" -> "http://localhost:30007",
-    "prod" -> "https://learningpath-frontend.api.ndla.no"
-  ).getOrElse(Environment, s"https://learningpath-frontend.$Environment.api.ndla.no")
-
-  val WhiteListedSuccessUrls = Map("/login/success/{appkey}" -> s"$LearningpathFrontendDomain/login/success/{appkey}")
-
-  val WhiteListedFailureUrls = Map(
-    "/login/failure" -> s"$LearningpathFrontendDomain/login/failure",
-    "/" -> s"$LearningpathFrontendDomain/")
-
-  val GoogleClientSecret = prop(GoogleClientSecretKey)
-  val GoogleClientId = prop(GoogleClientIdKey)
-  val FacebookClientSecret = prop(FacebookClientSecretKey)
-  val FacebookClientId = prop(FacebookClientIdKey)
-  val TwitterApiKey = prop(TwitterApiKeyKey)
-  val TwitterClientSecret = prop(TwitterClientSecretKey)
-
-  val KongAdminPort = 8001
-  val KongHostName = "api-gateway.ndla-local"
-  val KongUsernamePrefix = "ndla-"
-
   val CorrelationIdKey = "correlationID"
   val CorrelationIdHeader = "X-Correlation-ID"
 
-  val MetaUserName = prop(MetaUserNameKey)
-  val MetaPassword = prop(MetaPasswordKey)
-  val MetaResource = prop(MetaResourceKey)
-  val MetaServer = prop(MetaServerKey)
-  val MetaPort = prop(MetaPortKey).toInt
-  val MetaSchema = prop(MetaSchemaKey)
-  val MetaInitialConnections = 3
-  val MetaMaxConnections = 20
+  val Auth0ClientIdKey = "AUTH0_CLIENT_ID"
+  val Auth0DomainKey = "AUTH0_DOMAIN"
+  val Auth0ScopeKey = "AUTH0_SCOPE"
 
-  lazy val secrets = readSecrets(SecretsFile, ApiSecretKeys) match {
+
+  val SecretsFile = "auth.secrets"
+  val ApiSecretKeys = Set(Auth0ClientIdKey, Auth0DomainKey, Auth0ScopeKey)
+
+  val Environment: String = propOrElse("NDLA_ENVIRONMENT", "local")
+  val Auth0ClientId: String = prop(Auth0ClientIdKey)
+  val Auth0Domain: String = prop(Auth0DomainKey)
+  val Auth0Scope: String = prop(Auth0ScopeKey)
+
+  val TokenValidityInSeconds:Long = 60 * 60
+
+  lazy private val secrets = readSecrets(SecretsFile, ApiSecretKeys) match {
      case Success(values) => values
      case Failure(exception) => throw new RuntimeException(s"Unable to load remote secrets from $SecretsFile", exception)
    }

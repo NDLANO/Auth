@@ -22,6 +22,9 @@ abstract class UnitSuite extends FunSuite with Matchers with OptionValues with I
   setEnv("FACEBOOK_CLIENT_ID", "client-id-key")
   setEnv("TWITTER_API_KEY", "api-key")
   setEnv("TWITTER_CLIENT_SECRET", "client-secret-key")
+  setEnv("AUTH0_CLIENT_ID", "auth0-client-id")
+  setEnv("AUTH0_DOMAIN", "auth0-domain")
+  setEnv("AUTH0_SCOPE", "auth0-scope")
 
   setEnv(MetaUserNameKey, "username")
   setEnv(MetaPasswordKey, "password")

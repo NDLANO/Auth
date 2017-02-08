@@ -13,9 +13,9 @@ import javax.servlet.ServletContext
 class ScalatraBootstrap extends LifeCycle {
   override def init(context: ServletContext) {
     implicit val swagger: AuthSwagger = new AuthSwagger
-    context.mount(ComponentRegistry.authController, "/auth", "auth")
     context.mount(ComponentRegistry.resourcesApp, "/api-docs")
     context.mount(ComponentRegistry.healthController, AuthProperties.HealthControllerPath)
-    context.mount(ComponentRegistry.tokenController, "/tokens")
+    context.mount(ComponentRegistry.tokenController, "/auth/tokens")
+    context.mount(ComponentRegistry.loginController, "/auth/login")
   }
 }
