@@ -20,10 +20,13 @@ import org.json4s.native.Serialization.read
 import org.json4s.{DefaultFormats, Formats}
 import org.scalatra.ScalatraServlet
 import org.scalatra.json.NativeJsonSupport
+import org.scalatra.swagger.{ResponseMessage, SwaggerSupport}
 
-abstract class NdlaController extends ScalatraServlet with NativeJsonSupport with LazyLogging {
+abstract class NdlaController extends ScalatraServlet with NativeJsonSupport with LazyLogging with SwaggerSupport {
   protected implicit override val jsonFormats: Formats = DefaultFormats
 
+  val response400 = ResponseMessage(400, "Validation Error", Some("ValidationError"))
+  val response500 = ResponseMessage(500, "Unknown error", Some("Error"))
 
   before() {
     contentType = formats("json")
