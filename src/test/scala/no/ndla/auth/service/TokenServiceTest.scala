@@ -32,8 +32,11 @@ class TokenServiceTest extends UnitSuite with TestEnvironment {
 
     when(clock.now()).thenReturn(now)
 
-    val token = service.createToken(clientId, clientSecret)
-    token match {
+    val tokenResponse = service.createToken(clientId, clientSecret)
+
+    tokenResponse.expires_in should equal(expectedEXP)
+    tokenResponse.token_type should equal("bearer")
+    tokenResponse.access_token match {
       case JsonWebToken(header, claimsSet, signature) => {
         val claims = claimsSet.asSimpleMap.getOrElse(fail("Expected a valid JWT"))
         claims.get("iat") should equal(Some(expectedIAT.toString))
@@ -43,6 +46,6 @@ class TokenServiceTest extends UnitSuite with TestEnvironment {
       case _ => fail("Expected a valid JWT")
     }
 
-    JsonWebToken.validate(token, clientSecret) should be (true)
+    JsonWebToken.validate(tokenResponse.access_token, clientSecret) should be (true)
   }
 }

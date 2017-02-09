@@ -62,7 +62,7 @@ abstract class NdlaController extends ScalatraServlet with NativeJsonSupport wit
       case Some(value) => value
       case None =>
         logger.warn(s"Request made to ${request.getRequestURI} without required parameter $paramName")
-        throw ParameterMissingException(s"The required parameter $paramName is missing")
+        throw ParameterMissingException(s"The required parameter $paramName is missing.")
     }
   }
 

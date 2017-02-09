@@ -9,6 +9,7 @@ package no.ndla.auth.service
 
 import authentikat.jwt.{JsonWebToken, JwtClaimsSet, JwtHeader}
 import no.ndla.auth.AuthProperties
+import no.ndla.auth.model.TokenResponse
 
 trait TokenService {
   this: Clock =>
@@ -16,19 +17,21 @@ trait TokenService {
 
   class TokenService {
 
-    def createToken(clientId: String, clientSecret: String): String = {
+    def createToken(clientId: String, clientSecret: String): TokenResponse = {
       val now = clock.now().toInstant.getEpochSecond
-
+      val expires = now + AuthProperties.TokenValidityInSeconds
       val jwtHeader = JwtHeader("HS256")
       val claims =
         s"""{
           |  "iss": "$clientId",
           |  "iat": $now,
-          |  "exp": ${now + AuthProperties.TokenValidityInSeconds}
+          |  "exp": $expires
           |}""".stripMargin
 
       val jwtClaims = JwtClaimsSet(claims)
-      JsonWebToken(jwtHeader, jwtClaims, clientSecret)
+
+      TokenResponse(JsonWebToken(jwtHeader, jwtClaims, clientSecret), "bearer", expires)
+
     }
   }
 
