@@ -41,7 +41,7 @@ object AuthProperties extends LazyLogging {
   val LearningpathFrontendDomain = Map(
     "local" -> "http://localhost:30007",
     "prod" -> "https://learningpath-frontend.api.ndla.no"
-  ).getOrElse(Environment, s"https://learningpath-frontend.$Environment.api.ndla.no")
+  ).getOrElse(Environment, s"http://learningpath-frontend.$Environment.api.ndla.no")
 
   val WhiteListedSuccessUrls = Map("/login/success/{appkey}" -> s"$LearningpathFrontendDomain/login/success/{appkey}")
 
