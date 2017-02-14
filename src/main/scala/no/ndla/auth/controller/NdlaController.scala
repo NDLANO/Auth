@@ -69,6 +69,14 @@ abstract class NdlaController extends ScalatraServlet with NativeJsonSupport wit
     }
   }
 
+  def paramOrNone(paramName: String)(implicit request: HttpServletRequest): Option[String] = {
+    params.get(paramName).map(_.trim).filterNot(_.isEmpty())
+  }
+
+  def headerOrNone(headerName: String)(implicit request: HttpServletRequest): Option[String] = {
+    request.header(headerName).map(_.trim).filterNot(_.isEmpty)
+  }
+
   def extract[T](json: String)(implicit mf: scala.reflect.Manifest[T]): T = {
     try {
       read[T](json)

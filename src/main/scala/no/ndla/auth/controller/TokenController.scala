@@ -25,23 +25,33 @@ trait TokenController {
 
     val getAccessToken: OperationBuilder =
       (apiOperation[TokenResponse]("getAccessToken")
-        summary "Returns an access token for the given client_id and client_secret"
+        summary "Returns an access token for the given client_id and client_secret. Either Basic Auth or Body-params must be used."
         notes "Returns an access token"
         parameters(
         headerParam[Option[String]]("X-Correlation-ID").description("User supplied correlation-id. May be omitted."),
-        headerParam[String]("Authorization").description("Basic Auth. Base64-encoded user:credentials"),
-        bodyParam[String]("grant_type").description("Value MUST be set to \"client_credentials\"."))
+        headerParam[Option[String]]("Authorization").description("Basic Auth. Base64-encoded user:credentials"),
+        bodyParam[String]("grant_type").description("Value MUST be set to \"client_credentials\"."),
+        bodyParam[Option[String]]("client_id").description("Client Id. If not using Basic Auth."),
+        bodyParam[Option[String]]("client_secret").description("Client secret. If not using Basic Auth."))
         responseMessages(response400, response500))
 
+
     post("/", operation(getAccessToken)) {
-      val authorization = requireHeader("Authorization")
       val grantTypeOk = requireParam("grant_type").equals("client_credentials")
 
       if(grantTypeOk) {
-        getClientCredentials(authorization) match {
-          case Some((clientId, clientSecret)) => tokenService.createToken(clientId, clientSecret)
-          case None => BadRequest("Unable to verify client credentials")
+        headerOrNone("Authorization") match {
+          case Some(authorization) => {
+            getClientCredentials(authorization) match {
+              case Some((extractedClientId, extractedClientSecret)) => tokenService.createToken(extractedClientId, extractedClientSecret)
+              case None => BadRequest("Unable to verify client credentials")
+            }
+          }
+          case None => {
+            tokenService.createToken(requireParam("client_id"), requireParam("client_secret"))
+          }
         }
+
       } else {
         BadRequest("Invalid grant_type")
       }
