@@ -14,6 +14,7 @@ import no.ndla.auth.model.{Error, Me}
 import no.ndla.network.jwt.JWTExtractor
 import org.scalatra.BadRequest
 import org.scalatra.swagger.Swagger
+import com.netaporter.uri.dsl._
 
 trait LoginController {
   val loginController: LoginController
@@ -60,19 +61,18 @@ trait LoginController {
     private val RedirectUri = "{REDIRECT_URI}"
     private val State = "{STATE}"
 
-    private val authorizeUrl = s"${AuthProperties.Auth0Domain}/authorize?" +
-      s"response_type=token&" +
-      s"client_id=${AuthProperties.Auth0ClientId}&" +
-      s"scope=${AuthProperties.Auth0Scope}&" +
-      s"connection=$Connection&" +
-      s"state=$State&" +
-      s"redirect_uri=$RedirectUri"
+
+
+    private val authorizeUrl = s"${AuthProperties.Auth0Domain}/authorize" ?
+      ("response_type" -> "token") &
+      ("client_id" -> AuthProperties.Auth0ClientId) &
+      ("scope" -> AuthProperties.Auth0Scope)
 
     private def redirectToProvider(provider: String) = {
-      val redirectUrl = authorizeUrl
-        .replace(Connection, provider)
-        .replace(RedirectUri, URLEncoder.encode(requireParam("successUrl"), "UTF-8"))
-        .replace(State, URLEncoder.encode(requireParam("state"), "UTF-8"))
+      val redirectUrl = authorizeUrl &
+        ("connection" -> provider) &
+        ("state" -> URLEncoder.encode(requireParam("state"), "UTF-8")) &
+        ("redirect_uri" -> requireParam("successUrl"))
 
       logger.info(s"REDIRECT-URL = $redirectUrl")
       redirect(redirectUrl)

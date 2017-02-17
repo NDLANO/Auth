@@ -53,7 +53,8 @@ lazy val auth = (project in file(".")).
       "org.apache.logging.log4j" % "log4j-slf4j-impl" % Log4JVersion,
       "javax.servlet" % "javax.servlet-api" % "3.1.0" % "container;provided;test",
       "com.fasterxml.jackson.dataformat" % "jackson-dataformat-yaml" % JacksonVersion,
-      "com.jason-goodwin" %% "authentikat-jwt" % "0.4.5"
+      "com.jason-goodwin" %% "authentikat-jwt" % "0.4.5",
+      "com.netaporter" %% "scala-uri" % "0.4.16"
     )
   ).enablePlugins(DockerPlugin).enablePlugins(GitVersioning).enablePlugins(JettyPlugin)
 

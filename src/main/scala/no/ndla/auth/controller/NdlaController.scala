@@ -22,6 +22,8 @@ import org.scalatra.ScalatraServlet
 import org.scalatra.json.NativeJsonSupport
 import org.scalatra.swagger.{ResponseMessage, SwaggerSupport}
 
+import scala.util.{Failure, Success, Try}
+
 abstract class NdlaController extends ScalatraServlet with NativeJsonSupport with LazyLogging with SwaggerSupport {
   protected implicit override val jsonFormats: Formats = DefaultFormats
 
@@ -78,13 +80,9 @@ abstract class NdlaController extends ScalatraServlet with NativeJsonSupport wit
   }
 
   def extract[T](json: String)(implicit mf: scala.reflect.Manifest[T]): T = {
-    try {
-      read[T](json)
-    } catch {
-      case e: Exception =>
-        logger.error(e.getMessage, e)
-        throw new ValidationException(message = e.getMessage)
+    Try(read[T](json)) match {
+      case Success(extracted) => extracted
+      case Failure(e) => throw new ValidationException(message = e.getMessage)
     }
   }
-
 }
