@@ -33,7 +33,7 @@ lazy val auth = (project in file(".")).
     javacOptions ++= Seq("-source", "1.8", "-target", "1.8"),
     scalacOptions := Seq("-target:jvm-1.8"),
     libraryDependencies ++= Seq(
-      "ndla" %% "network" % "0.8",
+      "ndla" %% "network" % "0.10",
       "org.scalatra" %% "scalatra" % Scalatraversion,
       "org.scalatra" %% "scalatra-specs2" % Scalatraversion % "test",
       "org.scalatra" %% "scalatra-json" % Scalatraversion,
@@ -46,20 +46,15 @@ lazy val auth = (project in file(".")).
       "org.json4s"   %% "json4s-jackson" % Json4sVersion,
       "org.eclipse.jetty" % "jetty-webapp" % "9.2.10.v20150310" % "container;compile",
       "org.eclipse.jetty" % "jetty-plus" % Jettyversion % "container",
-      "com.github.scribejava" % "scribejava-apis" % "2.1.0",
       "org.mockito" % "mockito-all" % MockitoVersion % "test",
-      "com.netaporter" %% "scala-uri" % "0.4.13",
-      "org.scalikejdbc" %% "scalikejdbc" % "2.2.8",
-      "org.scalikejdbc" %% "scalikejdbc-test" % "2.2.8" % "test",
-      "org.postgresql" % "postgresql" % "9.4-1201-jdbc4",
-      "com.h2database" % "h2" % "1.4.191",
-      "org.flywaydb" % "flyway-core" % "4.0",
       "com.typesafe.scala-logging" %% "scala-logging" % ScalaLoggingVersion,
       "org.apache.logging.log4j" % "log4j-api" % Log4JVersion,
       "org.apache.logging.log4j" % "log4j-core" % Log4JVersion,
       "org.apache.logging.log4j" % "log4j-slf4j-impl" % Log4JVersion,
       "javax.servlet" % "javax.servlet-api" % "3.1.0" % "container;provided;test",
-      "com.fasterxml.jackson.dataformat" % "jackson-dataformat-yaml" % JacksonVersion
+      "com.fasterxml.jackson.dataformat" % "jackson-dataformat-yaml" % JacksonVersion,
+      "com.jason-goodwin" %% "authentikat-jwt" % "0.4.5",
+      "com.netaporter" %% "scala-uri" % "0.4.16"
     )
   ).enablePlugins(DockerPlugin).enablePlugins(GitVersioning).enablePlugins(JettyPlugin)
 

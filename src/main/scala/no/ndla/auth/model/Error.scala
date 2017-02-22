@@ -12,12 +12,12 @@ import java.text.SimpleDateFormat
 import java.util.Date
 
 object Error {
-  val GENERIC = "1"
-  val AUTHENTICATION = "2"
-  val NOT_FOUND = "3"
-  val HEADER_MISSING = "4"
-  val PARAMETER_MISSING = "5"
-  val VALIDATION = "6"
+  val GENERIC = "GENERIC"
+  val AUTHENTICATION = "AUTHENTICATION"
+  val NOT_FOUND = "NOT_FOUND"
+  val HEADER_MISSING = "HEADER_MISSING"
+  val PARAMETER_MISSING = "PARAMETER_MISSING"
+  val VALIDATION = "VALIDATION"
 
   val GenericError = Error(GENERIC, s"Ooops. Something we didn't anticipate occurred. We have logged the error, and will look into it.")
 }
