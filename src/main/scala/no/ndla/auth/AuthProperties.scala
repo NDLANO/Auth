@@ -24,7 +24,7 @@ object AuthProperties extends LazyLogging {
   val Auth0ClientIdKey = "AUTH0_CLIENT_ID"
   val Auth0DomainKey = "AUTH0_DOMAIN"
   val Auth0ScopeKey = "AUTH0_SCOPE"
-
+  val ExtraRolesToGrantKey = "EXTRA_ROLES_TO_GRANT"
 
   val SecretsFile = "auth.secrets"
   val ApiSecretKeys = Set(Auth0ClientIdKey, Auth0DomainKey, Auth0ScopeKey)
@@ -35,6 +35,8 @@ object AuthProperties extends LazyLogging {
   val Auth0Scope: String = prop(Auth0ScopeKey)
 
   val TokenValidityInSeconds:Long = 60 * 60
+
+  val ExtraRolesToGrant = new RoleParser(propOrElse(ExtraRolesToGrantKey, "")).fromJson()
 
   lazy private val secrets = readSecrets(SecretsFile, ApiSecretKeys) match {
      case Success(values) => values
@@ -54,5 +56,13 @@ object AuthProperties extends LazyLogging {
           case None => default
         }
     }
+  }
+
+  case class RoleDef(clientId: String, roles: List[String])
+  class RoleParser(jsonAsString: String) {
+    import org.json4s.native.Serialization._
+    implicit val formats = org.json4s.DefaultFormats
+
+    def fromJson(): Map[String, List[String]] = read[List[RoleDef]](jsonAsString).map(t => t.clientId -> t.roles).toMap
   }
 }
