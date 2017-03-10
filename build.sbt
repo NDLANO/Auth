@@ -33,7 +33,7 @@ lazy val auth = (project in file(".")).
     javacOptions ++= Seq("-source", "1.8", "-target", "1.8"),
     scalacOptions := Seq("-target:jvm-1.8"),
     libraryDependencies ++= Seq(
-      "ndla" %% "network" % "0.10",
+      "ndla" %% "network" % "0.17",
       "org.scalatra" %% "scalatra" % Scalatraversion,
       "org.scalatra" %% "scalatra-specs2" % Scalatraversion % "test",
       "org.scalatra" %% "scalatra-json" % Scalatraversion,
