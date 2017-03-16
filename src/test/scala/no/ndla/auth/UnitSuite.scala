@@ -25,6 +25,7 @@ abstract class UnitSuite extends FunSuite with Matchers with OptionValues with I
   setEnv("AUTH0_CLIENT_ID", "auth0-client-id")
   setEnv("AUTH0_DOMAIN", "auth0-domain")
   setEnv("AUTH0_SCOPE", "auth0-scope")
+  setEnv("EXTRA_ROLES_TO_GRANT", """[{"clientId":"client-one","roles":["subject:action"]}]""")
 
   setEnv(MetaUserNameKey, "username")
   setEnv(MetaPasswordKey, "password")

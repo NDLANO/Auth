@@ -10,6 +10,7 @@ package no.ndla.auth.service
 import authentikat.jwt.{JsonWebToken, JwtClaimsSet, JwtHeader}
 import no.ndla.auth.AuthProperties
 import no.ndla.auth.model.TokenResponse
+import no.ndla.network.ApplicationUrl
 import org.json4s.JsonDSL._
 
 trait TokenService {
@@ -24,6 +25,9 @@ trait TokenService {
       val jwtHeader = JwtHeader("HS256")
 
       val jwtClaims = JwtClaimsSet(
+        ("app_metadata" ->
+          ("ndla_id" -> clientId) ~
+          ("roles" -> AuthProperties.ExtraRolesToGrant.getOrElse(clientId, List.empty))) ~
         ("iss" -> clientId) ~
         ("iat" -> now) ~
         ("exp" -> expires))
