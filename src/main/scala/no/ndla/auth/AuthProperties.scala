@@ -21,24 +21,17 @@ object AuthProperties extends LazyLogging {
   val CorrelationIdKey = "correlationID"
   val CorrelationIdHeader = "X-Correlation-ID"
 
-  val Auth0ClientIdKey = "AUTH0_CLIENT_ID"
-  val Auth0DomainKey = "AUTH0_DOMAIN"
-  val Auth0ScopeKey = "AUTH0_SCOPE"
   val ExtraRolesToGrantKey = "EXTRA_ROLES_TO_GRANT"
 
   val SecretsFile = "auth.secrets"
-  val ApiSecretKeys = Set(Auth0ClientIdKey, Auth0DomainKey, Auth0ScopeKey)
 
   val Environment: String = propOrElse("NDLA_ENVIRONMENT", "local")
-  val Auth0ClientId: String = prop(Auth0ClientIdKey)
-  val Auth0Domain: String = prop(Auth0DomainKey)
-  val Auth0Scope: String = prop(Auth0ScopeKey)
 
   val TokenValidityInSeconds:Long = 60 * 60
 
   val ExtraRolesToGrant = new RoleParser(propOrElse(ExtraRolesToGrantKey, "")).fromJson()
 
-  lazy private val secrets = readSecrets(SecretsFile, ApiSecretKeys) match {
+  lazy private val secrets = readSecrets(SecretsFile, Set(ExtraRolesToGrantKey)) match {
      case Success(values) => values
      case Failure(exception) => throw new RuntimeException(s"Unable to load remote secrets from $SecretsFile", exception)
    }
