@@ -51,8 +51,8 @@ The response will look like this:
 ```expires_in``` is an epoch timestamp pluss the valid token time, giving you time of expiraction in epoch time 
 [https://en.wikipedia.org/wiki/Unix_time]. 
 
-```access_token``` is a Base64 encodes string, to view the content use e.g. the [https://jwt.io/] service. If client id 
-and secret is missing, you need to contact us.
+```access_token``` To view the content of the access token use e.g. the [https://jwt.io/] service, to check that clientId
+and secret are present. 
 The ```access_token``` value is what you must pass in an Authorization header with your API call in this form:
 ``` 
 Authorization: Bearer {access_token}
