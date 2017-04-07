@@ -57,4 +57,6 @@ Authorization: Bearer {access_token}
 We recomend using an approach where you check the ```expires_in``` value to the current time in Epoch time, and 
 then on later API calls, check the expires time against the current time to see if you need to fetch a new token. 
 In this case, your processing sequence will look like this:
+
+
 ![Illustration get token expiration check](get-token-check-expiration.png?raw=true "Get token expiration check")
