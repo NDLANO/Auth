@@ -51,5 +51,6 @@ The ```access_token``` value is what you must pass in an Authorization header wi
 ``` 
 Authorization: Bearer {access_token}
 ```
-![Alt text](get-token-check-expiration.png?raw=true "Get token expiration check")
+![Alt text](src/main/resources/get-token-check-expiration.png?raw=true "Get token expiration check")
+
 
