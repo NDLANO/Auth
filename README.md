@@ -30,11 +30,13 @@ You obtain an access token by making a ```POST``` request to:
 ``` 
 https://test.api.ndla.no/auth/tokens
 ```
-with the basic autorization in the header:
+with the basic access authentication [https://en.wikipedia.org/wiki/Basic_access_authentication] in the header, 
+created by Base64 encoding the string ```clientId:clientSecret``` as the identification part:
 
 ``` 
-"Authorization" "Basic a0tUR2NBc3dEVkpDS1lmTGR6MmVqZmtrLmxpc3RpbmcuZnJvbnRlbmQ6VmdVUVh0ZUhGcUFRUWN3dW5ZWllpZERGSm9VnRMUFl3cVV6NGRXVw=="
+Authorization: Basic QWxhZGRpbjpPcGVuU2VzYW1l
 ```
+
 
 The response will look like this:
 
