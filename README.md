@@ -27,11 +27,11 @@ The response will look like this:
 {
   "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhcHBfbWV0YWRhdGEiOnsibmRsYV9pZCI6ImtLVEdjQXN3T0lVWUtZZkxkejJlamZray55b3VyYXBwLmZyb250ZW5kIiwicm9sZXMiOltdfSwiaXNzIjoia0tUR2NBc3dPSVVZS1lmTGR6MmVqZmtrLnlvdXJhcHAuZnJvbnRlbmQiLCJpYXQiOjE0OTI2ODU0OTAsImV4cCI6MTQ5MjY4OTA5MH0.1vf-bl7CnHHlswxXAUDXyNsANNlCD8dSORoWOnXy7Jg",
   "token_type": "bearer",
-  "expires_in": 1491571938
+  "expires_in": 3600
 }
 ```
 
-```expires_in``` is an epoch timestamp pluss the valid token time, giving you time of expiraction in [epoch time](https://en.wikipedia.org/wiki/Unix_time). 
+```expires_in``` is the time the token is valid, in seconds. 
 
 ```access_token``` To view the content of the access token use e.g. the https://jwt.io/ service, to check that clientId
 and secret are present. 
