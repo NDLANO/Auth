@@ -19,7 +19,7 @@ created by Base64 encoding the string ```clientId:clientSecret``` as the identif
 ``` 
 Authorization: Basic QWxhZGRpbjpPcGVuU2VzYW1l
 ```
-
+and `grant_type=client_credentials` in body.
 
 The response will look like this:
 
