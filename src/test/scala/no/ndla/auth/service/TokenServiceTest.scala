@@ -31,7 +31,7 @@ class TokenServiceTest extends UnitSuite with TestEnvironment {
     val clientSecret = "secret"
 
     val expectedIAT = now.toInstant.getEpochSecond
-    val expectedEXP = now.toInstant.getEpochSecond + AuthProperties.TokenValidityInSeconds
+    val expectedEXP = AuthProperties.TokenValidityInSeconds
 
     when(clock.now()).thenReturn(now)
 
@@ -60,7 +60,7 @@ class TokenServiceTest extends UnitSuite with TestEnvironment {
     val clientSecret = "secret"
 
     val expectedIAT = now.toInstant.getEpochSecond
-    val expectedEXP = now.toInstant.getEpochSecond + AuthProperties.TokenValidityInSeconds
+    val expectedEXP = AuthProperties.TokenValidityInSeconds
 
     when(clock.now()).thenReturn(now)
 
