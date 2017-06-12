@@ -21,7 +21,7 @@ trait TokenService {
 
     def createToken(clientId: String, clientSecret: String): TokenResponse = {
       val now = clock.now().toInstant.getEpochSecond
-      val expires = AuthProperties.TokenValidityInSeconds
+      val expires = now + AuthProperties.TokenValidityInSeconds
       val jwtHeader = JwtHeader("HS256")
 
       val jwtClaims = JwtClaimsSet(
@@ -32,7 +32,7 @@ trait TokenService {
         ("iat" -> now) ~
         ("exp" -> expires))
 
-      TokenResponse(JsonWebToken(jwtHeader, jwtClaims, clientSecret), "bearer", expires)
+      TokenResponse(JsonWebToken(jwtHeader, jwtClaims, clientSecret), "bearer", AuthProperties.TokenValidityInSeconds)
 
     }
   }
