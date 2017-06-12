@@ -21,7 +21,8 @@ trait TokenService {
 
     def createToken(clientId: String, clientSecret: String): TokenResponse = {
       val now = clock.now().toInstant.getEpochSecond
-      val expires = now + AuthProperties.TokenValidityInSeconds
+      val expires_in = AuthProperties.TokenValidityInSeconds //Number of seconds until token expires. Part of the auth0 standard.
+      val exp = now + expires_in //The epoch timestamp of when the token expires. Part of the jwt standard. KONG
       val jwtHeader = JwtHeader("HS256")
 
       val jwtClaims = JwtClaimsSet(
@@ -30,9 +31,9 @@ trait TokenService {
           ("roles" -> AuthProperties.ExtraRolesToGrant.getOrElse(clientId, List.empty))) ~
         ("iss" -> clientId) ~
         ("iat" -> now) ~
-        ("exp" -> expires))
+        ("exp" -> exp))
 
-      TokenResponse(JsonWebToken(jwtHeader, jwtClaims, clientSecret), "bearer", AuthProperties.TokenValidityInSeconds)
+      TokenResponse(JsonWebToken(jwtHeader, jwtClaims, clientSecret), "bearer", expires_in)
 
     }
   }
