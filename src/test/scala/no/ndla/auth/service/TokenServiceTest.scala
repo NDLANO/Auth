@@ -31,13 +31,13 @@ class TokenServiceTest extends UnitSuite with TestEnvironment {
     val clientSecret = "secret"
 
     val expectedIAT = now.toInstant.getEpochSecond
-    val expectedEXP = AuthProperties.TokenValidityInSeconds
+    val expectedEXP = now.toInstant.getEpochSecond + AuthProperties.TokenValidityInSeconds
 
     when(clock.now()).thenReturn(now)
 
     val tokenResponse = service.createToken(clientId, clientSecret)
 
-    tokenResponse.expires_in should equal(expectedEXP)
+    tokenResponse.expires_in should equal(AuthProperties.TokenValidityInSeconds)
     tokenResponse.token_type should equal("bearer")
     tokenResponse.access_token match {
       case JsonWebToken(header, claimsSet, signature) => {
@@ -60,13 +60,13 @@ class TokenServiceTest extends UnitSuite with TestEnvironment {
     val clientSecret = "secret"
 
     val expectedIAT = now.toInstant.getEpochSecond
-    val expectedEXP = AuthProperties.TokenValidityInSeconds
+    val expectedEXP = now.toInstant.getEpochSecond + AuthProperties.TokenValidityInSeconds
 
     when(clock.now()).thenReturn(now)
 
     val tokenResponse = service.createToken(clientId, clientSecret)
 
-    tokenResponse.expires_in should equal(expectedEXP)
+    tokenResponse.expires_in should equal(AuthProperties.TokenValidityInSeconds)
     tokenResponse.token_type should equal("bearer")
     tokenResponse.access_token match {
       case JsonWebToken(header, claimsSet, signature) => {
