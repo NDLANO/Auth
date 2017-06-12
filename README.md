@@ -31,7 +31,7 @@ The response will look like this:
 }
 ```
 
-```expires_in``` is the time the token is valid, in seconds. 
+```expires_in``` is the lifetime in **seconds** of the access token.
 
 ```access_token``` To view the content of the access token use e.g. the https://jwt.io/ service, to check that clientId
 and secret are present. 

@@ -16,4 +16,4 @@ import scala.annotation.meta.field
 case class TokenResponse (
   @(ApiModelProperty@field)(description = "The Access Token") access_token: String,
   @(ApiModelProperty@field)(description = "Which type of token is returned") token_type: String,
-  @(ApiModelProperty@field)(description = "The number of seconds until this token expires") expires_in: Long)
+  @(ApiModelProperty@field)(description = "The lifetime in seconds of the access token.") expires_in: Long)
